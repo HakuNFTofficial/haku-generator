@@ -39,7 +39,7 @@ node index.js
 node index_original.js
 ```
 
-## 性能对比
+## performance comparison
 
 Run the following command to view the performance comparison analysis:
 ```bash
