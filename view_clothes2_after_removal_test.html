@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clothes2 Layer Test After Removal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .info-box {
+            background-color: #e9f7ef;
+            border-left: 4px solid #2ecc71;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .element-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .element-info span:first-child {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clothes2 Layer Test After Removal</h1>
+        
+        <div class="image-container">
+            <img src="./build/images/clothes2_test_after_removal.png" alt="Clothes2 Layer Test After Removal NFT">
+        </div>
+        
+        <div class="info-box">
+            <h2>测试信息</h2>
+            <p>此NFT测试了删除旧clothes文件夹后clothes2图层的渲染功能，包含以下图层：</p>
+            <div class="element-info">
+                <span>background图层:</span>
+                <span>Blank.png</span>
+            </div>
+            <div class="element-info">
+                <span>female body图层:</span>
+                <span>BlushPink.png</span>
+            </div>
+            <div class="element-info">
+                <span>female clothes2图层:</span>
+                <span>F_clothing_10.png</span>
+            </div>
+            <div class="element-info">
+                <span>male body图层:</span>
+                <span>BlushPink.png</span>
+            </div>
+            <div class="element-info">
+                <span>male clothes2图层:</span>
+                <span>M_clonthing_F1.png</span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h2>文件信息</h2>
+            <div class="element-info">
+                <span>图像文件:</span>
+                <span>build/images/clothes2_test_after_removal.png</span>
+            </div>
+            <div class="element-info">
+                <span>元数据文件:</span>
+                <span>build/json/clothes2_test_after_removal.json</span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h2>测试结果</h2>
+            <p>测试成功完成，clothes2图层在删除旧clothes文件夹后仍能正常工作。</p>
+        </div>
+    </div>
+</body>
+</html>

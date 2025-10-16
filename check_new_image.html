@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>新生成的NFT图片检查</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .nft-image {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .layer-info {
+            margin: 10px 0;
+            padding: 5px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>新生成的NFT图片检查</h1>
+        
+        <div class="image-container">
+            <h2>生成的NFT图片</h2>
+            <img id="nftImage" class="nft-image" src="build/images/1.png" alt="NFT Image" onerror="imageError()">
+        </div>
+        
+        <div class="info-box">
+            <h2>图层信息</h2>
+            <div class="layer-info"><strong>背景:</strong> Purple</div>
+            <div class="layer-info"><strong>头发2:</strong> male_hair_A1</div>
+            <div class="layer-info"><strong>衣服2:</strong> M_clonthing_F1</div>
+            <div class="layer-info"><strong>身体:</strong> DustyCoral</div>
+            <div class="layer-info"><strong>纹身:</strong> tattoo04</div>
+            <div class="layer-info"><strong>嘴巴:</strong> Smile</div>
+            <div class="layer-info"><strong>眼睛:</strong> Sad</div>
+            <div class="layer-info"><strong>左眼镜:</strong> glasses_007</div>
+            <div class="layer-info"><strong>鼻子:</strong> DustyCoral</div>
+            <div class="layer-info"><strong>右眼镜:</strong> glasses_007</div>
+            <div class="layer-info"><strong>耳朵:</strong> DustyCoral</div>
+            <div class="layer-info"><strong>装备:</strong> Square</div>
+            <div class="layer-info"><strong>头发1:</strong> male_hair_A1</div>
+            <div class="layer-info"><strong>衣服1:</strong> M_clonthing_F1</div>
+        </div>
+        
+        <div class="info-box">
+            <h2>图层混合模式说明</h2>
+            <p>所有图层现在都使用统一的混合模式：<strong>source-over</strong></p>
+            <p>这是Canvas的默认混合模式，新绘制的图层会覆盖在已有图层之上。</p>
+            <p>通过统一混合模式，可以确保所有图层按照预期方式叠加，避免因混合模式不同导致的显示问题。</p>
+        </div>
+    </div>
+
+    <script>
+        function imageError() {
+            document.getElementById('nftImage').src = 'data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="%23ddd"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="%23999" text-anchor="middle" dy=".3em">图片加载失败</text></svg>';
+            alert('图片加载失败，请检查文件路径是否正确');
+        }
+    </script>
+</body>
+</html>
