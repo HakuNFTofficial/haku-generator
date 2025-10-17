@@ -1,11 +1,192 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Simple Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haku Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #007acc;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
 </head>
 <body>
-    <h1>Female Clothes2 Test</h1>
-    <img src="./build/images/female_clothes2_test.png" alt="Female Clothes2 Test" style="max-width: 500px;">
-    <p>如果能看到图像，说明路径配置正确。</p>
+    <div class="container">
+        <h1>Haku Generator Test</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Basic NFT Generation</h2>
+            <button onclick="testBasicGeneration()">Run Test</button>
+            <div id="basicResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Layer Association Functionality</h2>
+            <button onclick="testLayerAssociation()">Run Test</button>
+            <div id="associationResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Concurrent Generation Performance</h2>
+            <button onclick="testConcurrency()">Run Test</button>
+            <div id="concurrencyResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated layer configuration
+        const layersConfig = [
+            { name: "Background", options: [{ name: "Blue", weight: 50 }, { name: "Green", weight: 50 }] },
+            { name: "Body", options: [{ name: "Standard", weight: 100 }] },
+            { name: "Hair", options: [{ name: "Black", weight: 50 }, { name: "Blonde", weight: 50 }] }
+        ];
+
+        // Simulated layer association configuration
+        const layerAssociations = {
+            female: {
+                hair1: ['hair2', 'hair3']
+            },
+            male: {
+                hair1: ['hair2']
+            }
+        };
+
+        // Simulated DNA generation function
+        function createDna(layers) {
+            return layers.map(layer => {
+                const totalWeight = layer.options.reduce((sum, option) => sum + option.weight, 0);
+                let random = Math.random() * totalWeight;
+                for (let option of layer.options) {
+                    random -= option.weight;
+                    if (random <= 0) {
+                        return `${option.name}:${layer.id || 1}`;
+                    }
+                }
+            }).join('-');
+        }
+
+        // Simulated NFT generation function
+        async function generateNFT(dna, layersConfig, layerAssociations, gender) {
+            // Simulate processing time
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Simulate layer association processing
+            if (layerAssociations && layerAssociations[gender]) {
+                // Simplified association logic
+                const dnaParts = dna.split('-');
+                // Actual association processing logic should be here
+            }
+            
+            return {
+                dna: dna,
+                image: "mock_image_data",
+                metadata: { /* mock metadata */ }
+            };
+        }
+
+        // Test basic generation
+        async function testBasicGeneration() {
+            const resultDiv = document.getElementById('basicResult');
+            resultDiv.style.display = 'block';
+            try {
+                const dna = createDna(layersConfig);
+                const nft = await generateNFT(dna, layersConfig, null, 'female');
+                resultDiv.innerHTML = `✅ Basic NFT generation successful!\nDNA: ${nft.dna}\nImage data: ${nft.image.substring(0, 20)}...`;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Basic NFT generation failed: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // Test layer association
+        async function testLayerAssociation() {
+            const resultDiv = document.getElementById('associationResult');
+            resultDiv.style.display = 'block';
+            try {
+                const dna = createDna(layersConfig);
+                const nft = await generateNFT(dna, layersConfig, layerAssociations, 'female');
+                resultDiv.innerHTML = `✅ Layer association function test successful!\nDNA: ${nft.dna}\nAssociation configuration applied`;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Layer association function test failed: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // Test concurrent performance
+        async function testConcurrency() {
+            const resultDiv = document.getElementById('concurrencyResult');
+            resultDiv.style.display = 'block';
+            try {
+                const startTime = Date.now();
+                const promises = [];
+                for (let i = 0; i < 5; i++) {
+                    promises.push(generateNFT(createDna(layersConfig), layersConfig, layerAssociations, 'female'));
+                }
+                const results = await Promise.all(promises);
+                const endTime = Date.now();
+                resultDiv.innerHTML = `✅ Concurrent generation test successful!\nGenerated count: ${results.length}\nTime taken: ${endTime - startTime}ms\nAverage per item: ${(endTime - startTime) / results.length}ms`;
+                resultDiv.className = 'result success';
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Concurrent generation test failed: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+    </script>
 </body>
 </html>

@@ -21,10 +21,10 @@ const solanaMetadata = {
   ],
 };
 
-// 如果选择了Solana，集合将从0开始自动编号
-// 为male和female分别配置不同的图层
+// If Solana is selected, the collection will be automatically numbered starting from 0
+// Configure different layers for male and female
 const layerConfigurations = [
-  // Female配置
+  // Female configuration
   {
     growEditionSizeTo: 500,
     gender: "female",
@@ -46,9 +46,9 @@ const layerConfigurations = [
       { name: "hair1", opacity: 1.0 },
       
     ],
-    // 图层关联配置：指定某些图层必须同时出现，并且选择名称相同的图片
+    // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
-      // hair1为主图层，hair2和hair3为关联图层
+      // hair1 is the main layer, hair2 and hair3 are associated layers
       hair3: {
         hair2: "sameName",
         hair1: "sameName"
@@ -65,7 +65,7 @@ const layerConfigurations = [
       }
     }
   },
-  // Male配置
+  // Male configuration
   {
     growEditionSizeTo: 500,
     gender: "male",
@@ -85,9 +85,9 @@ const layerConfigurations = [
       { name: "hair1", opacity: 1.0 },
       { name: "clothes1", opacity: 1.0 },
     ],
-    // 图层关联配置：指定某些图层必须同时出现，并且选择名称相同的图片
+    // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
-      // hair1为主图层，hair2为关联图层
+      // hair1 is the main layer, hair2 is the associated layer
       hair2: {
         hair1: "sameName"
       },

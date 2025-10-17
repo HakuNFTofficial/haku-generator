@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// 定义需要替换的问题文件
+// Define problem files that need to be replaced
 const problemFiles = [
   'layers/male/clothes2/M_clonthing_B1.png',
   'layers/male/clothes2/M_clonthing_O1.png',
@@ -11,7 +11,7 @@ const problemFiles = [
   'layers/male/hair2/male_hair_E1.png'
 ];
 
-// 定义替换源文件（使用同目录下的其他文件）
+// Define replacement source files (using other files in the same directory)
 const replacementMap = {
   'layers/male/clothes2/M_clonthing_B1.png': 'layers/male/clothes2/M_clonthing_A1.png',
   'layers/male/clothes2/M_clonthing_O1.png': 'layers/male/clothes2/M_clonthing_H1.png',
@@ -21,37 +21,37 @@ const replacementMap = {
   'layers/male/hair2/male_hair_E1.png': 'layers/male/hair2/male_hair_L1.png'
 };
 
-console.log("开始替换问题图层文件...\n");
+console.log("Starting to replace problem layer files...\n");
 
-// 创建备份目录
+// Create backup directory
 const backupDir = 'backup_layers';
 if (!fs.existsSync(backupDir)) {
   fs.mkdirSync(backupDir, { recursive: true });
 }
 
-// 执行替换
+// Execute replacement
 problemFiles.forEach(problemFile => {
   if (fs.existsSync(problemFile)) {
-    // 备份原文件
+    // Backup original file
     const backupPath = path.join(backupDir, path.basename(problemFile));
     fs.copyFileSync(problemFile, backupPath);
-    console.log(`已备份: ${problemFile} -> ${backupPath}`);
+    console.log(`Backed up: ${problemFile} -> ${backupPath}`);
     
-    // 获取替换源文件
+    // Get replacement source file
     const sourceFile = replacementMap[problemFile];
     
     if (fs.existsSync(sourceFile)) {
-      // 替换文件
+      // Replace file
       fs.copyFileSync(sourceFile, problemFile);
-      console.log(`已替换: ${problemFile} (使用 ${sourceFile})`);
+      console.log(`Replaced: ${problemFile} (using ${sourceFile})`);
     } else {
-      console.log(`警告: 源文件不存在 ${sourceFile}`);
+      console.log(`Warning: Source file does not exist ${sourceFile}`);
     }
   } else {
-    console.log(`警告: 问题文件不存在 ${problemFile}`);
+    console.log(`Warning: Problem file does not exist ${problemFile}`);
   }
 });
 
-console.log("\n替换完成!");
-console.log("备份文件保存在: " + backupDir);
-console.log("\n现在您可以重新生成NFT，图层应该会正常显示。");
+console.log("\nReplacement completed!");
+console.log("Backup files saved in: " + backupDir);
+console.log("\nYou can now regenerate the NFT, and the layers should display correctly.");

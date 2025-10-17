@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// 定义需要恢复的文件
+// Define files that need to be restored
 const filesToRestore = [
   'M_clonthing_B1.png',
   'M_clonthing_O1.png',
@@ -11,14 +11,14 @@ const filesToRestore = [
   'male_hair_E1.png'
 ];
 
-console.log("开始恢复原始图层文件...\n");
+console.log("Starting to restore original layer files...\n");
 
-// 恢复文件
+// Restore files
 filesToRestore.forEach(filename => {
   const backupPath = path.join('backup_layers', filename);
   
   if (fs.existsSync(backupPath)) {
-    // 确定目标路径
+    // Determine target path
     let targetPath;
     if (filename.startsWith('M_')) {
       targetPath = path.join('layers/male/clothes2', filename);
@@ -26,12 +26,12 @@ filesToRestore.forEach(filename => {
       targetPath = path.join('layers/male/hair2', filename);
     }
     
-    // 恢复文件
+    // Restore file
     fs.copyFileSync(backupPath, targetPath);
-    console.log(`已恢复: ${targetPath}`);
+    console.log(`Restored: ${targetPath}`);
   } else {
-    console.log(`警告: 备份文件不存在 ${backupPath}`);
+    console.log(`Warning: Backup file does not exist ${backupPath}`);
   }
 });
 
-console.log("\n恢复完成!");
+console.log("\nRestoration completed!");

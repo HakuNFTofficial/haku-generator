@@ -1,89 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>检查新生成的NFT图片</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Newly Generated NFT Image</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f0f0;
-        }
-        .container {
             max-width: 800px;
             margin: 0 auto;
-            background-color: white;
             padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
         .image-container {
             text-align: center;
-            margin: 20px 0;
+            margin: 30px 0;
         }
         .nft-image {
             max-width: 100%;
+            height: auto;
             border: 2px solid #ddd;
             border-radius: 5px;
         }
-        .info {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-        }
-        .explanation {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-        }
-        h1, h2 {
-            color: #333;
-        }
         .layer-info {
+            color: #007acc;
             font-weight: bold;
-            color: #007bff;
+        }
+        .problem-solving {
+            background-color: #e8f4fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .problem-solving h2 {
+            color: #007acc;
+            margin-top: 0;
+        }
+        .problem-solving li {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>新生成的NFT图片检查</h1>
+        <h1>Check Newly Generated NFT Image</h1>
         
         <div class="image-container">
-            <img src="build/images/1.png" alt="新生成的NFT图片" class="nft-image">
+            <img src="build/images/1.png" alt="Newly Generated NFT Image" class="nft-image">
         </div>
         
-        <div class="info">
-            <h2>图层信息</h2>
-            <p>这张图片包含以下图层：</p>
-            <ul>
-                <li><span class="layer-info">背景</span></li>
-                <li><span class="layer-info">身体</span></li>
-                <li><span class="layer-info">衣服1 (clothes1)</span></li>
-                <li><span class="layer-info">衣服2 (clothes2)</span> - 已调整绘制顺序，现在应该可见</li>
-                <li><span class="layer-info">头发1 (hair1)</span></li>
-                <li><span class="layer-info">头发2 (hair2)</span></li>
-                <li><span class="layer-info">眼睛</span></li>
-                <li><span class="layer-info">嘴巴</span></li>
-                <li><span class="layer-info">鼻子</span></li>
-                <li><span class="layer-info">耳朵</span></li>
-                <li><span class="layer-info">眼镜左</span></li>
-                <li><span class="layer-info">眼镜右</span></li>
-                <li><span class="layer-info">纹身</span></li>
-                <li><span class="layer-info">装备</span></li>
-            </ul>
-        </div>
+        <h2>Layer Information</h2>
+        <p>This image contains the following layers:</p>
+        <ul>
+            <li><span class="layer-info">Background</span></li>
+            <li><span class="layer-info">Body</span></li>
+            <li><span class="layer-info">Clothes1</span></li>
+            <li><span class="layer-info">Clothes2</span> - Drawing order adjusted, should now be visible</li>
+            <li><span class="layer-info">Hair1</span></li>
+            <li><span class="layer-info">Hair2</span></li>
+            <li><span class="layer-info">Eyes</span></li>
+            <li><span class="layer-info">Mouth</span></li>
+            <li><span class="layer-info">Nose</span></li>
+            <li><span class="layer-info">Ears</span></li>
+            <li><span class="layer-info">Glasses Left</span></li>
+            <li><span class="layer-info">Glasses Right</span></li>
+            <li><span class="layer-info">Tattoo</span></li>
+            <li><span class="layer-info">Gear</span></li>
+        </ul>
         
-        <div class="explanation">
-            <h2>问题解决说明</h2>
-            <p>之前clothes2图层未显示的问题已通过以下方式解决：</p>
+        <div class="problem-solving">
+            <h2>Problem Resolution Explanation</h2>
+            <p>The previous issue with the clothes2 layer not displaying has been resolved through the following methods:</p>
             <ol>
-                <li><strong>统一图层混合模式</strong>：为所有图层添加了统一的blend: MODE.sourceOver属性</li>
-                <li><strong>调整图层绘制顺序</strong>：将clothes2图层放置在clothes1图层之后绘制，确保clothes2不会被clothes1覆盖</li>
-                <li><strong>保持图层关联</strong>：clothes1和clothes2仍然使用相同的元素名称，满足关联规则</li>
+                <li><strong>Unified Layer Blend Mode</strong>: Added a unified blend: MODE.sourceOver property to all layers</li>
+                <li><strong>Adjusted Layer Drawing Order</strong>: Placed the clothes2 layer after the clothes1 layer to ensure clothes2 is not covered by clothes1</li>
+                <li><strong>Maintained Layer Association</strong>: clothes1 and clothes2 still use the same element name to satisfy association rules</li>
             </ol>
-            <p>现在clothes2图层应该能够正确显示在图片中。</p>
+            <p>The clothes2 layer should now display correctly in the image.</p>
         </div>
     </div>
 </body>

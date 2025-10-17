@@ -2,50 +2,50 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// 性能测试函数
+// Performance test function
 async function runPerformanceTest(scriptPath, testName) {
-  console.log(`开始运行 ${testName}...`);
+  console.log(`Starting ${testName}...`);
   
-  // 记录开始时间
+  // Record start time
   const startTime = Date.now();
   
-  // 运行脚本
+  // Run script
   const child = spawn('node', [scriptPath], {
     cwd: path.dirname(scriptPath)
   });
   
-  // 收集输出
+  // Collect output
   let output = '';
   child.stdout.on('data', (data) => {
     output += data.toString();
-    // 实时显示进度
+    // Display progress in real-time
     process.stdout.write(data.toString());
   });
   
   child.stderr.on('data', (data) => {
-    console.error(`错误: ${data}`);
+    console.error(`Error: ${data}`);
   });
   
-  // 等待脚本完成
+  // Wait for script to complete
   await new Promise((resolve) => {
     child.on('close', (code) => {
       const endTime = Date.now();
-      const duration = (endTime - startTime) / 1000; // 转换为秒
+      const duration = (endTime - startTime) / 1000; // Convert to seconds
       
-      console.log(`\n${testName} 完成:`);
-      console.log(`- 退出码: ${code}`);
-      console.log(`- 运行时间: ${duration} 秒`);
+      console.log(`\n${testName} completed:`);
+      console.log(`- Exit code: ${code}`);
+      console.log(`- Running time: ${duration} seconds`);
       
-      // 提取生成统计信息
-      const successMatch = output.match(/生成完成: 成功 (\d+) 张/);
-      const failureMatch = output.match(/生成完成: .*失败 (\d+) 张/);
+      // Extract generation statistics
+      const successMatch = output.match(/Generation completed: Successfully generated (\d+) images/);
+      const failureMatch = output.match(/Generation completed: .*Failed (\d+) images/);
       
       if (successMatch) {
-        console.log(`- 成功生成: ${successMatch[1]} 张`);
+        console.log(`- Successfully generated: ${successMatch[1]} images`);
       }
       
       if (failureMatch) {
-        console.log(`- 失败数量: ${failureMatch[1]} 张`);
+        console.log(`- Failed count: ${failureMatch[1]} images`);
       }
       
       resolve({ duration, code, output });
@@ -55,62 +55,62 @@ async function runPerformanceTest(scriptPath, testName) {
   return { duration: (Date.now() - startTime) / 1000 };
 }
 
-// 主函数
+// Main function
 async function main() {
   try {
-    console.log("=== HashLips Art Engine 性能测试 ===\n");
+    console.log("=== HashLips Art Engine Performance Test ===\n");
     
-    // 清理之前的生成文件
+    // Clean up previous generation files
     const buildDir = path.join(__dirname, 'build');
     if (fs.existsSync(buildDir)) {
       fs.rmSync(buildDir, { recursive: true });
-      console.log("已清理之前的生成文件");
+      console.log("Previous generation files cleaned up");
     }
     
-    // 创建新的build目录
+    // Create new build directory
     fs.mkdirSync(buildDir, { recursive: true });
     
-    // 运行改进版本测试
+    // Run improved version test
     console.log("\n" + "=".repeat(50));
     const improvedTestResult = await runPerformanceTest(
       path.join(__dirname, 'index.js'),
-      '改进版本 (带并发控制和图层关联)'
+      'Improved version (with concurrency control and layer association)'
     );
     
-    // 清理生成文件
+    // Clean up generated files
     if (fs.existsSync(buildDir)) {
       fs.rmSync(buildDir, { recursive: true });
       fs.mkdirSync(buildDir, { recursive: true });
     }
     
-    // 运行原始版本测试（如果存在）
+    // Run original version test (if exists)
     const originalIndexPath = path.join(__dirname, 'index_original.js');
     if (fs.existsSync(originalIndexPath)) {
       console.log("\n" + "=".repeat(50));
       const originalTestResult = await runPerformanceTest(
         originalIndexPath,
-        '原始版本'
+        'Original version'
       );
       
-      // 比较结果
+      // Compare results
       console.log("\n" + "=".repeat(50));
-      console.log("性能对比结果:");
-      console.log(`- 改进版本运行时间: ${improvedTestResult.duration.toFixed(2)} 秒`);
+      console.log("Performance comparison results:");
+      console.log(`- Improved version running time: ${improvedTestResult.duration.toFixed(2)} seconds`);
       
       if (originalTestResult && originalTestResult.duration) {
-        console.log(`- 原始版本运行时间: ${originalTestResult.duration.toFixed(2)} 秒`);
+        console.log(`- Original version running time: ${originalTestResult.duration.toFixed(2)} seconds`);
         const improvement = ((originalTestResult.duration - improvedTestResult.duration) / originalTestResult.duration * 100).toFixed(2);
-        console.log(`- 性能提升: ${improvement > 0 ? '+' : ''}${improvement}%`);
+        console.log(`- Performance improvement: ${improvement > 0 ? '+' : ''}${improvement}%`);
       }
     } else {
-      console.log("\n原始版本脚本未找到，跳过对比测试");
+      console.log("\nOriginal version script not found, skipping comparison test");
     }
     
-    console.log("\n=== 测试完成 ===");
+    console.log("\n=== Test completed ===");
   } catch (error) {
-    console.error('测试过程中发生错误:', error);
+    console.error('Error occurred during testing:', error);
   }
 }
 
-// 运行主函数
+// Run main function
 main();

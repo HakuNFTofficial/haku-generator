@@ -1,16 +1,16 @@
 const path = require('path');
 const basePath = process.cwd();
 
-// 导入改进版本的函数
+// Import improved version functions
 const { startCreatingWithConcurrencyControl, buildSetup } = require('./src/main_improved.js');
 
-// 启动NFT生成
+// Start NFT generation
 (async () => {
   try {
     buildSetup();
     await startCreatingWithConcurrencyControl();
-    console.log('NFT生成完成！');
+    console.log('NFT generation completed!');
   } catch (error) {
-    console.error('生成NFT时出错:', error);
+    console.error('Error generating NFT:', error);
   }
 })();

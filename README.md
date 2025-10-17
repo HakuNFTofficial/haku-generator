@@ -58,10 +58,10 @@ node performance_test.js
 
 ## Configuration Parameter Explanation
 
-在 `src/main_improved.js` The following parameters can be adjusted：
-- `CONCURRENT_LIMIT`：Limit on the number of concurrent image loading (default: 5)
-- `BATCH_SIZE`：The number of NFTs processed in each batch (default is 10)
-- `MEMORY_CHECK_INTERVAL`：Memory check interval (default: check once every 5 batches)
+In `src/main_improved.js`, the following parameters can be adjusted:
+- `CONCURRENT_LIMIT`: Limit on the number of concurrent image loading (default: 5)
+- `BATCH_SIZE`: The number of NFTs processed in each batch (default is 10)
+- `MEMORY_CHECK_INTERVAL`: Memory check interval (default: check once every 5 batches)
 
 ## Production environment recommendations
 

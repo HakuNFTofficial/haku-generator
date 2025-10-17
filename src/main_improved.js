@@ -1,4 +1,4 @@
-// 需要从原始main.js导入的函数和变量
+// Functions and variables that need to be imported from the original main.js
 const basePath = process.cwd();
 const { NETWORK } = require(`${basePath}/constants/network.js`);
 const path = require("path");
@@ -37,7 +37,7 @@ let hashlipsGiffer = null;
 let globalEditionCounter = 1;
 let globalEditionCounterMeta = 1;
 
-// 从原始main.js复制的必要函数
+// Necessary functions copied from the original main.js
 const buildSetup = () => {
   if (fs.existsSync(buildDir)) {
     fs.rmdirSync(buildDir, { recursive: true });
@@ -94,62 +94,62 @@ const getElements = (path) => {
 const layersSetup = (layersOrder, gender) => {
   const baseLayersPath = `${layersDir}`;
   
-  // 根据性别确定要加载的图层文件夹
+  // Determine layer folders to load based on gender
   let layerPaths = [];
   if (gender === "male") {
     layerPaths = layersOrder.map(layer => {
-      // male 专属图层
+      // male exclusive layers
       if (layer.name === "body") {
         return `${baseLayersPath}/male/body`;
       } else if (layer.name === "clothes1" || layer.name === "clothes2") {
-        // male 有 clothes1 和 clothes2 文件夹
+        // male has clothes1 and clothes2 folders
         return `${baseLayersPath}/male/${layer.name}`;
       } else if (layer.name.startsWith("hair")) {
-        // male 有 hair1 和 hair2 文件夹
+        // male has hair1 and hair2 folders
         return `${baseLayersPath}/male/${layer.name}`;
       } 
-      // neutral 图层
+      // neutral layers
       else if (fs.existsSync(`${baseLayersPath}/neutral/${layer.name}`)) {
         return `${baseLayersPath}/neutral/${layer.name}`;
       }
-      // 如果在 neutral 中找不到，则在 male 文件夹中查找（作为后备）
+      // If not found in neutral, look in male folder (as fallback)
       else if (fs.existsSync(`${baseLayersPath}/male/${layer.name}`)) {
         return `${baseLayersPath}/male/${layer.name}`;
       }
-      // 如果都找不到，返回一个空路径占位
+      // If not found in either, return an empty path placeholder
       else {
         return "";
       }
     });
   } else if (gender === "female") {
     layerPaths = layersOrder.map(layer => {
-      // female 专属图层
+      // female exclusive layers
       if (layer.name === "body") {
         return `${baseLayersPath}/female/body`;
       } else if (layer.name === "clothes") {
         return `${baseLayersPath}/female/clothes`;
       } else if (layer.name.startsWith("hair")) {
-        // female 有 hair1, hair2, hair3 文件夹
+        // female has hair1, hair2, hair3 folders
         return `${baseLayersPath}/female/${layer.name}`;
       }
-      // neutral 图层
+      // neutral layers
       else if (fs.existsSync(`${baseLayersPath}/neutral/${layer.name}`)) {
         return `${baseLayersPath}/neutral/${layer.name}`;
       }
-      // 如果在 neutral 中找不到，则在 female 文件夹中查找（作为后备）
+      // If not found in neutral, look in female folder (as fallback)
       else if (fs.existsSync(`${baseLayersPath}/female/${layer.name}`)) {
         return `${baseLayersPath}/female/${layer.name}`;
       }
-      // 如果都找不到，返回一个空路径占位
+      // If not found in either, return an empty path placeholder
       else {
         return "";
       }
     });
   }
 
-  // 加载图层并构建配置对象
+  // Load layers and build configuration objects
   const layers = layerPaths.map((path, index) => {
-    // 如果路径为空，返回空元素数组
+    // If path is empty, return empty elements array
     if (path === "") {
       return { name: layersOrder[index].name, elements: [] };
     }
@@ -183,7 +183,7 @@ const drawBackground = () => {
 const addMetadata = (_dna, _edition, _gender) => {
   let dateTime = Date.now();
   
-  // 添加性别属性到attributesList
+  // Add gender attribute to attributesList
   attributesList.push({
     trait_type: "gender",
     value: _gender,
@@ -245,14 +245,14 @@ const drawElement = (_renderObject, _index, _layersLen) => {
 const loadLayerImg = async (_layer) => {
   try {
     return new Promise(async (resolve) => {
-      // 检查selectedElement是否存在
+      // Check if selectedElement exists
       if (!_layer.selectedElement) {
         console.warn(`Skipping layer ${_layer.name} due to missing element`);
         resolve({ layer: _layer, loadedImage: null });
         return;
       }
       
-      // 检查文件是否存在
+      // Check if file exists
       if (!fs.existsSync(_layer.selectedElement.path)) {
         console.error("Image file does not exist:", _layer.selectedElement.path);
         resolve({ layer: _layer, loadedImage: null });
@@ -264,7 +264,7 @@ const loadLayerImg = async (_layer) => {
     });
   } catch (error) {
     console.error("Error loading image:", error);
-    // 返回一个空对象而不是抛出错误
+    // Return an empty object instead of throwing an error
     return { layer: _layer, loadedImage: null };
   }
 };
@@ -348,14 +348,14 @@ const createDna = (_layers, _layerConfig = null) => {
     }
   });
   
-  // 应用图层关联规则（如果提供了图层配置）
+  // Apply layer association rules (if layer configuration is provided)
   let dnaStr = randNum.join(DNA_DELIMITER);
   if (_layerConfig && _layerConfig.layerAssociations) {
     try {
       dnaStr = applyLayerAssociations(dnaStr, _layerConfig);
     } catch (error) {
-      console.error("图层关联处理失败:", error.message);
-      throw error; // 重新抛出异常，终止NFT生成
+      console.error("Layer association processing failed:", error.message);
+      throw error; // Re-throw exception to terminate NFT generation
     }
   }
   
@@ -394,122 +394,122 @@ function shuffle(array) {
   return array;
 }
 
-// 应用图层关联规则的函数
+// Function to apply layer association rules
 /**
- * 应用图层关联规则（必填项）
- * @param {string} dnaStr - DNA字符串
- * @param {Object} layerConfig - 图层配置
- * @returns {string} 更新后的DNA字符串
- * @throws {Error} 当找不到同名元素时抛出异常
+ * Apply layer association rules (mandatory)
+ * @param {string} dnaStr - DNA string
+ * @param {Object} layerConfig - Layer configuration
+ * @returns {string} Updated DNA string
+ * @throws {Error} Throws an exception when matching elements are not found
  */
 const applyLayerAssociations = (dnaStr, layerConfig) => {
-  // 检查是否存在图层关联配置
+  // Check if layer association configuration exists
   if (!layerConfig.layerAssociations) {
-    console.warn("警告: 图层关联配置缺失");
+    console.warn("Warning: Layer association configuration is missing");
     return dnaStr;
   }
 
-  // 将DNA字符串分割为数组
+  // Split DNA string into an array
   let dnaSequence = dnaStr.split(DNA_DELIMITER);
   
-  // 获取图层关联配置
+  // Get layer association configuration
   const associations = layerConfig.layerAssociations;
   
-  // 遍历每个关联规则
+  // Iterate through each association rule
   Object.keys(associations).forEach(mainLayerName => {
-    // 查找主图层在layersOrder中的索引
+    // Find the index of the main layer in layersOrder
     const mainLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === mainLayerName);
     
-    // 检查主图层是否存在
+    // Check if the main layer exists
     if (mainLayerIndex === -1) {
-      throw new Error(`致命错误: 在layersOrder中找不到主图层 "${mainLayerName}"`);
+      throw new Error(`Fatal error: Main layer "${mainLayerName}" not found in layersOrder`);
     }
     
-    // 检查DNA序列中是否存在主图层元素
+    // Check if the main layer element exists in the DNA sequence
     if (!dnaSequence[mainLayerIndex]) {
-      throw new Error(`致命错误: DNA序列中缺少主图层 "${mainLayerName}" 的元素`);
+      throw new Error(`Fatal error: Missing element for main layer "${mainLayerName}" in DNA sequence`);
     }
     
-    // 获取主图层的元素名称（从DNA序列中）
+    // Get the element name of the main layer (from DNA sequence)
     const mainLayerElement = dnaSequence[mainLayerIndex].split(":")[0];
-    console.log(`主图层 "${mainLayerName}" 的元素: ${mainLayerElement}`);
+    console.log(`Element of main layer "${mainLayerName}": ${mainLayerElement}`);
     
-    // 遍历所有关联图层
+    // Iterate through all associated layers
     Object.keys(associations[mainLayerName]).forEach(associatedLayerName => {
-      // 检查关联类型是否为sameName
+      // Check if the association type is sameName
       if (associations[mainLayerName][associatedLayerName] === "sameName") {
-        // 查找关联图层在layersOrder中的索引
+        // Find the index of the associated layer in layersOrder
         const associatedLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === associatedLayerName);
         
-        // 检查关联图层是否存在
+        // Check if the associated layer exists
         if (associatedLayerIndex === -1) {
-          throw new Error(`致命错误: 在layersOrder中找不到关联图层 "${associatedLayerName}"`);
+          throw new Error(`Fatal error: Associated layer "${associatedLayerName}" not found in layersOrder`);
         }
         
-        // 检查DNA序列中是否存在关联图层元素
+        // Check if the associated layer element exists in the DNA sequence
         if (!dnaSequence[associatedLayerIndex]) {
-          throw new Error(`致命错误: DNA序列中缺少关联图层 "${associatedLayerName}" 的元素`);
+          throw new Error(`Fatal error: Missing element for associated layer "${associatedLayerName}" in DNA sequence`);
         }
         
-        // 构造新的DNA元素字符串（元素名:层级）
-        const layerParts = dnaSequence[associatedLayerIndex].split(":");
-        if (layerParts.length >= 2) {
-          const layerLevel = layerParts[1];
-          const oldElementName = layerParts[0];
-          
-          // 检查关联图层元素是否与主图层元素同名
-          if (oldElementName !== mainLayerElement) {
-            console.log(`关联图层 "${associatedLayerName}" 的元素 "${oldElementName}" 与主图层 "${mainLayerName}" 的元素 "${mainLayerElement}" 不匹配，正在更新...`);
-            dnaSequence[associatedLayerIndex] = `${mainLayerElement}:${layerLevel}`;
-            console.log(`已将关联图层 "${associatedLayerName}" 的元素更新为: ${mainLayerElement}`);
+        // Construct new DNA element string (element_name:layer_level)
+          const layerParts = dnaSequence[associatedLayerIndex].split(":");
+          if (layerParts.length >= 2) {
+            const layerLevel = layerParts[1];
+            const oldElementName = layerParts[0];
+            
+            // Check if the associated layer element has the same name as the main layer element
+            if (oldElementName !== mainLayerElement) {
+              console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" does not match element "${mainLayerElement}" of main layer "${mainLayerName}", updating...`);
+              dnaSequence[associatedLayerIndex] = `${mainLayerElement}:${layerLevel}`;
+              console.log(`Updated element of associated layer "${associatedLayerName}" to: ${mainLayerElement}`);
+            } else {
+              console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" already matches element "${mainLayerElement}" of main layer "${mainLayerName}", no update needed`);
+            }
           } else {
-            console.log(`关联图层 "${associatedLayerName}" 的元素 "${oldElementName}" 与主图层 "${mainLayerName}" 的元素 "${mainLayerElement}" 已匹配，无需更新`);
+            throw new Error(`Fatal error: Incorrect DNA format for associated layer "${associatedLayerName}"`);
           }
-        } else {
-          throw new Error(`致命错误: 关联图层 "${associatedLayerName}" 的DNA格式不正确`);
         }
-      }
+      });
     });
-  });
+    
+    // Re-combine DNA string
+    const updatedDnaStr = dnaSequence.join(DNA_DELIMITER);
+    console.log(`Layer association processing completed, updated DNA: ${updatedDnaStr}`);
+    return updatedDnaStr;
+  };
   
-  // 重新组合DNA字符串
-  const updatedDnaStr = dnaSequence.join(DNA_DELIMITER);
-  console.log(`图层关联处理完成，更新后的DNA: ${updatedDnaStr}`);
-  return updatedDnaStr;
-};
-
-// 添加缺失的addText函数
-const addText = (_sig, x, y, size) => {
-  ctx.fillStyle = text.color;
-  ctx.font = `${size}px ${text.family}`;
-  ctx.textBaseline = text.baseline;
-  ctx.fillText(_sig, x, y);
-};
-
-// 配置参数
-const CONCURRENT_LIMIT = 5; // 并发生成图片的数量限制
-const BATCH_SIZE = 10; // 每批处理的图片数量
-const MEMORY_CHECK_INTERVAL = 20; // 每生成20张图片检查一次内存
-
-// 内存检查函数
-function checkMemoryUsage() {
-  const used = process.memoryUsage();
-  console.log(`内存使用情况: 
-    RSS: ${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB
-    HeapTotal: ${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB
-    HeapUsed: ${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB
-    External: ${Math.round(used.external / 1024 / 1024 * 100) / 100} MB`);
+  // Add missing addText function
+  const addText = (_sig, x, y, size) => {
+    ctx.fillStyle = text.color;
+    ctx.font = `${size}px ${text.family}`;
+    ctx.textBaseline = text.baseline;
+    ctx.fillText(_sig, x, y);
+  };
   
-  // 如果内存使用超过1GB，触发垃圾回收
-  if (used.heapUsed > 1024 * 1024 * 1024) {
-    console.log("内存使用过高，触发垃圾回收...");
-    if (global.gc) {
-      global.gc();
+  // Configuration parameters
+  const CONCURRENT_LIMIT = 5; // Limit on concurrent image generation
+  const BATCH_SIZE = 10; // Number of images processed per batch
+  const MEMORY_CHECK_INTERVAL = 20; // Check memory usage every 20 images generated
+  
+  // Memory check function
+  function checkMemoryUsage() {
+    const used = process.memoryUsage();
+    console.log(`Memory usage: 
+      RSS: ${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB
+      HeapTotal: ${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB
+      HeapUsed: ${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB
+      External: ${Math.round(used.external / 1024 / 1024 * 100) / 100} MB`);
+    
+    // Trigger garbage collection if memory usage exceeds 1GB
+    if (used.heapUsed > 1024 * 1024 * 1024) {
+      console.log("High memory usage, triggering garbage collection...");
+      if (global.gc) {
+        global.gc();
+      }
     }
   }
-}
 
-// 带并发控制的图片生成函数
+// Image generation function with concurrency control
 async function createNFTWithConcurrencyControl(
   layers, 
   layerConfig, 
@@ -526,7 +526,7 @@ async function createNFTWithConcurrencyControl(
     let results = constructLayerToDna(newDna, layers);
     let loadedElements = [];
 
-    // 并发加载图层，但限制并发数
+    // Concurrently load layers, but limit concurrency
     for (let i = 0; i < results.length; i += CONCURRENT_LIMIT) {
       const batch = results.slice(i, i + CONCURRENT_LIMIT);
       const batchPromises = batch.map(layer => loadLayerImg(layer));
@@ -534,7 +534,7 @@ async function createNFTWithConcurrencyControl(
       loadedElements.push(...batchResults);
     }
 
-    // 渲染图片
+    // Render image
     debugLogs ? console.log("Clearing canvas") : null;
     ctx.clearRect(0, 0, format.width, format.height);
     
@@ -554,7 +554,7 @@ async function createNFTWithConcurrencyControl(
       drawBackground();
     }
     
-    // 使用loadedElements而不是renderObjectArray
+    // Use loadedElements instead of renderObjectArray
     loadedElements.forEach((renderObject, index) => {
       drawElement(
         renderObject,
@@ -582,12 +582,12 @@ async function createNFTWithConcurrencyControl(
     
     return { success: true, edition: abstractedIndexes[0] };
   } catch (error) {
-    console.error("生成NFT时出错:", error);
+    console.error("Error generating NFT:", error);
     return { success: false, reason: error.message };
   }
 }
 
-// 批量处理NFT生成
+// Batch process NFT generation
 async function batchCreateNFTs(
   layers, 
   layerConfig, 
@@ -597,7 +597,7 @@ async function batchCreateNFTs(
 ) {
   const batches = [];
   
-  // 将任务分成批次
+  // Divide tasks into batches
   for (let i = 0; i < abstractedIndexes.length; i += BATCH_SIZE) {
     batches.push(abstractedIndexes.slice(i, i + BATCH_SIZE));
   }
@@ -605,12 +605,12 @@ async function batchCreateNFTs(
   let successCount = 0;
   let failCount = 0;
   
-  // 顺序处理每个批次
+  // Process each batch sequentially
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    console.log(`处理批次 ${batchIndex + 1}/${batches.length}，包含 ${batch.length} 张图片`);
+    console.log(`Processing batch ${batchIndex + 1}/${batches.length}, containing ${batch.length} images`);
     
-    // 并发处理批次内的图片
+    // Concurrently process images within the batch
     const batchPromises = batch.map(async (edition, index) => {
       const result = await createNFTWithConcurrencyControl(
         layers, 
@@ -625,44 +625,44 @@ async function batchCreateNFTs(
     
     const batchResults = await Promise.all(batchPromises);
     
-    // 统计结果
+    // Statistics results
     batchResults.forEach(result => {
       if (result.success) {
         successCount++;
       } else {
         failCount++;
-        console.log(`生成失败: ${result.reason}`);
+        console.log(`Generation failed: ${result.reason}`);
       }
     });
     
-    // 每个批次完成后检查内存
+    // Check memory after each batch completion
     if (batchIndex % MEMORY_CHECK_INTERVAL === 0) {
       checkMemoryUsage();
     }
     
-    // 短暂暂停，让系统有机会回收资源
+    // Brief pause to allow the system to reclaim resources
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
   return { successCount, failCount };
 }
 
-// 修改后的startCreating函数
+// Modified startCreating function
 const startCreatingWithConcurrencyControl = async () => {
   let layerConfigIndex = 0;
   let failedCount = 0;
   
-  // 重置全局计数器
+  // Reset global counters
   globalEditionCounterMeta = 1;
   globalEditionCounterJSON = 1;
   
-  // 清空metadataList和dnaList
+  // Clear metadataList and dnaList
   metadataList = [];
   dnaList.clear();
   
-  // 启用垃圾回收（如果可用）
+  // Enable garbage collection (if available)
   if (global.gc) {
-    console.log("启用垃圾回收");
+    console.log("Enabling garbage collection");
   }
   
   while (layerConfigIndex < layerConfigurations.length) {

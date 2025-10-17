@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
-// 定义源目录和目标目录
+// Define source and target directories
 const layersDir = './layers';
 const maleDir = path.join(layersDir, 'male');
 const femaleDir = path.join(layersDir, 'female');
 const neutralDir = path.join(layersDir, 'neutral');
 const commonDir = path.join(layersDir, 'common');
 
-// 创建必要的目录
+// Create necessary directories
 const createDirIfNotExists = (dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -20,7 +20,7 @@ createDirIfNotExists(femaleDir);
 createDirIfNotExists(neutralDir);
 createDirIfNotExists(commonDir);
 
-// 定义图层分类规则
+// Define layer classification rules
 const layerClassifications = {
   male: [
     'malebody', 'maleclothes', 'malehair1', 'malehair2', 'malehair3',
@@ -38,23 +38,23 @@ const layerClassifications = {
   ]
 };
 
-// 获取所有图层文件夹
+// Get all layer folders
 const layerFolders = fs.readdirSync(layersDir).filter(file => 
   fs.statSync(path.join(layersDir, file)).isDirectory() &&
   !['male', 'female', 'neutral', 'common'].includes(file)
 );
 
-// 移动文件夹到对应的性别目录
+// Move folders to corresponding gender directories
 layerFolders.forEach(folder => {
   const folderPath = path.join(layersDir, folder);
   
-  // 跳过我们刚刚创建的目录
+  // Skip the directories we just created
   if (['male', 'female', 'neutral', 'common'].includes(folder)) {
     return;
   }
   
-  // 根据规则分类
-  let targetDir = neutralDir; // 默认放到中性目录
+  // Classify according to rules
+  let targetDir = neutralDir; // Default to neutral directory
   
   if (layerClassifications.male.includes(folder)) {
     targetDir = path.join(maleDir, folder.replace('male', ''));
@@ -66,7 +66,7 @@ layerFolders.forEach(folder => {
     targetDir = path.join(commonDir, folder);
   }
   
-  // 如果目标目录已存在且不是空目录，则先删除它
+  // If target directory exists and is not empty, delete it first
   if (fs.existsSync(targetDir)) {
     const files = fs.readdirSync(targetDir);
     if (files.length > 0) {
@@ -75,10 +75,10 @@ layerFolders.forEach(folder => {
     }
   }
   
-  // 创建目标目录并移动文件夹
+  // Create target directory and move folder
   createDirIfNotExists(path.dirname(targetDir));
   fs.renameSync(folderPath, targetDir);
   console.log(`Moved ${folder} to ${targetDir}`);
 });
 
-console.log('图层整理完成！');
+console.log('Layer organization completed!');

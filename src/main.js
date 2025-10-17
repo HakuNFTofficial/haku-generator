@@ -75,7 +75,7 @@ const getElements = (path) => {
     .filter((item) => !/(^|\/)\.[^\/\.]/g.test(item))
     .map((i, index) => {
       if (i.includes("-")) {
-        throw new Error(`图层文件名不能包含破折号(-)，请修改文件名: ${i}。建议将破折号(-)替换为下划线(_)或其他字符。`);
+        throw new Error(`Layer filenames cannot contain hyphens (-), please modify the filename: ${i}. It is recommended to replace hyphens (-) with underscores (_) or other characters.`);
       }
       return {
         id: index,
@@ -90,62 +90,62 @@ const getElements = (path) => {
 const layersSetup = (layersOrder, gender) => {
   const baseLayersPath = `${layersDir}`;
   
-  // 根据性别确定要加载的图层文件夹
+  // Determine layer folders to load based on gender
   let layerPaths = [];
   if (gender === "male") {
     layerPaths = layersOrder.map(layer => {
-      // male 专属图层
+      // male exclusive layers
       if (layer.name === "body") {
         return `${baseLayersPath}/male/body`;
       } else if (layer.name === "clothes1" || layer.name === "clothes2") {
-        // male 有 clothes1 和 clothes2 文件夹
+        // male has clothes1 and clothes2 folders
         return `${baseLayersPath}/male/${layer.name}`;
       } else if (layer.name.startsWith("hair")) {
-        // male 有 hair1 和 hair2 文件夹
+        // male has hair1 and hair2 folders
         return `${baseLayersPath}/male/${layer.name}`;
       } 
-      // neutral 图层
+      // neutral layers
       else if (fs.existsSync(`${baseLayersPath}/neutral/${layer.name}`)) {
         return `${baseLayersPath}/neutral/${layer.name}`;
       }
-      // 如果在 neutral 中找不到，则在 male 文件夹中查找（作为后备）
+      // If not found in neutral, look in male folder (as fallback)
       else if (fs.existsSync(`${baseLayersPath}/male/${layer.name}`)) {
         return `${baseLayersPath}/male/${layer.name}`;
       }
-      // 如果都找不到，返回一个空路径占位
+      // If not found anywhere, return an empty path placeholder
       else {
         return "";
       }
     });
   } else if (gender === "female") {
     layerPaths = layersOrder.map(layer => {
-      // female 专属图层
+      // female exclusive layers
       if (layer.name === "body") {
         return `${baseLayersPath}/female/body`;
       } else if (layer.name === "clothes") {
         return `${baseLayersPath}/female/clothes`;
       } else if (layer.name.startsWith("hair")) {
-        // female 有 hair1, hair2, hair3 文件夹
+        // female has hair1, hair2, hair3 folders
         return `${baseLayersPath}/female/${layer.name}`;
       }
-      // neutral 图层
+      // neutral layers
       else if (fs.existsSync(`${baseLayersPath}/neutral/${layer.name}`)) {
         return `${baseLayersPath}/neutral/${layer.name}`;
       }
-      // 如果在 neutral 中找不到，则在 female 文件夹中查找（作为后备）
+      // If not found in neutral, look in female folder (as fallback)
       else if (fs.existsSync(`${baseLayersPath}/female/${layer.name}`)) {
         return `${baseLayersPath}/female/${layer.name}`;
       }
-      // 如果都找不到，返回一个空路径占位
+      // If not found anywhere, return an empty path placeholder
       else {
         return "";
       }
     });
   }
 
-  // 加载图层并构建配置对象
+  // Load layers and build configuration object
   const layers = layerPaths.map((path, index) => {
-    // 如果路径为空，返回空元素数组
+    // If path is empty, return empty elements array
     if (path === "") {
       return { name: layersOrder[index].name, elements: [] };
     }
@@ -157,7 +157,7 @@ const layersSetup = (layersOrder, gender) => {
   return layers;
 };
 
-// 添加全局变量来跟踪全局edition计数器
+// Add global variable to track global edition counter
 let globalEditionCounter = 1;
 
 const saveImage = (_editionCount) => {
@@ -179,13 +179,13 @@ const drawBackground = () => {
   ctx.fillRect(0, 0, format.width, format.height);
 };
 
-// 添加全局变量来跟踪全局edition计数器
+// Add global variable to track global edition counter
 let globalEditionCounterMeta = 1;
 
 const addMetadata = (_dna, _edition, _gender) => {
   let dateTime = Date.now();
   
-  // 添加性别属性到attributesList
+  // Add gender attribute to attributesList
   attributesList.push({
     trait_type: "gender",
     value: _gender,
@@ -235,9 +235,9 @@ const addMetadata = (_dna, _edition, _gender) => {
 
 const addAttributes = (_element) => {
   let selectedElement = _element.layer.selectedElement;
-  // 检查selectedElement是否存在
+  // Check if selectedElement exists
   if (!selectedElement) {
-    // 如果selectedElement不存在，添加一个默认值
+    // If selectedElement does not exist, add a default value
     attributesList.push({
       trait_type: _element.layer.name,
       value: "None",
@@ -254,14 +254,14 @@ const addAttributes = (_element) => {
 const loadLayerImg = async (_layer) => {
   try {
     return new Promise(async (resolve) => {
-      // 检查selectedElement是否存在
+      // Check if selectedElement exists
       if (!_layer.selectedElement) {
         console.warn(`Skipping layer ${_layer.name} due to missing element`);
         resolve({ layer: _layer, loadedImage: null });
         return;
       }
       
-      // 检查文件是否存在
+      // Check if file exists
       if (!fs.existsSync(_layer.selectedElement.path)) {
         console.error("Image file does not exist:", _layer.selectedElement.path);
         resolve({ layer: _layer, loadedImage: null });
@@ -273,7 +273,7 @@ const loadLayerImg = async (_layer) => {
     });
   } catch (error) {
     console.error("Error loading image:", error);
-    // 返回一个空对象而不是抛出错误
+    // Return an empty object instead of throwing an error
     return { layer: _layer, loadedImage: null };
   }
 };
@@ -287,7 +287,7 @@ const addText = (_sig, x, y, size) => {
 };
 
 const drawElement = (_renderObject, _index, _layersLen) => {
-  // 如果图像加载失败或selectedElement不存在，跳过绘制
+  // Skip drawing if image loading failed or selectedElement does not exist
   if (!_renderObject.loadedImage || !_renderObject.layer.selectedElement) {
     console.warn(`Skipping layer ${_renderObject.layer.name} due to missing element or image`);
     addAttributes(_renderObject);
@@ -317,7 +317,7 @@ const drawElement = (_renderObject, _index, _layersLen) => {
 const constructLayerToDna = (_dna = "", _layers = []) => {
   const dnaSequence = _dna.split(DNA_DELIMITER);
   let mappedDnaToLayers = _layers.map((layer, index) => {
-    // 检查DNA序列中是否存在该索引的元素
+    // Check if an element exists at this index in the DNA sequence
     if (dnaSequence[index]) {
       let selectedElement = layer.elements.find(
         (e) => e.id == cleanDna(dnaSequence[index])
@@ -329,7 +329,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
         selectedElement: selectedElement,
       };
     } else {
-      // 如果DNA序列中不存在该索引的元素，返回空的selectedElement
+      // If no element exists at this index in the DNA sequence, return empty selectedElement
       return {
         name: layer.name,
         blend: layer.blend,
@@ -409,14 +409,14 @@ const createDna = (_layers, _layerConfig = null) => {
     }
   });
   
-  // 应用图层关联规则（如果提供了图层配置）
+  // Apply layer association rules (if layer configuration is provided)
   let dnaStr = randNum.join(DNA_DELIMITER);
   if (_layerConfig && _layerConfig.layerAssociations) {
     try {
       dnaStr = applyLayerAssociations(dnaStr, _layerConfig);
     } catch (error) {
-      console.error("图层关联处理失败:", error.message);
-      throw error; // 重新抛出异常，终止NFT生成
+      console.error("Layer association processing failed:", error.message);
+      throw error; // Re-throw exception to terminate NFT generation
     }
   }
   
@@ -427,7 +427,7 @@ const writeMetaData = (_data) => {
   fs.writeFileSync(`${buildDir}/json/_metadata.json`, _data);
 };
 
-// 添加全局变量来跟踪全局edition计数器
+// Add global variable to track global edition counter
 let globalEditionCounterJSON = 1;
 
 const saveMetaDataSingleFile = (_editionCount) => {
@@ -461,15 +461,15 @@ function shuffle(array) {
 const startCreating = async () => {
   let layerConfigIndex = 0;
   let failedCount = 0;
-  // 重置全局计数器
+  // Reset global counters
   globalEditionCounterMeta = 1;
   globalEditionCounterJSON = 1;
-  // 清空metadataList和dnaList
+  // Clear metadataList and dnaList
   metadataList = [];
   dnaList.clear();
   
   while (layerConfigIndex < layerConfigurations.length) {
-    // 为每个配置生成独立的abstractedIndexes数组
+    // Generate independent abstractedIndexes array for each configuration
     let abstractedIndexes = [];
     for (
       let i = network == NETWORK.sol ? 0 : 1;
@@ -483,13 +483,13 @@ const startCreating = async () => {
       abstractedIndexes = shuffle(abstractedIndexes);
     }
     
-    // 为每个配置重置editionCount
+    // Reset editionCount for each configuration
     let editionCount = 1;
     
-    // 使用配置中指定的性别
+    // Use gender specified in configuration
     const gender = layerConfigurations[layerConfigIndex].gender || (Math.random() > 0.5 ? "male" : "female");
     
-    // 根据性别加载对应的图层配置
+    // Load layer configuration based on gender
     const layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder, gender
     );
@@ -574,43 +574,43 @@ const startCreating = async () => {
 module.exports = { startCreating, buildSetup, getElements };
 
 /**
- * 应用图层关联规则
- * @param {string} dnaStr - DNA字符串
- * @param {Object} layerConfig - 图层配置
- * @returns {string} 更新后的DNA字符串
+ * Apply layer association rules
+ * @param {string} dnaStr - DNA string
+ * @param {Object} layerConfig - Layer configuration
+ * @returns {string} Updated DNA string
  */
 const applyLayerAssociations = (dnaStr, layerConfig) => {
-  // 检查是否存在图层关联配置
+  // Check if layer association configuration exists
   if (!layerConfig.layerAssociations) {
     return dnaStr;
   }
 
-  // 将DNA字符串分割为数组
+  // Split DNA string into an array
   let dnaSequence = dnaStr.split(DNA_DELIMITER);
   
-  // 获取图层关联配置
+  // Get layer association configuration
   const associations = layerConfig.layerAssociations;
   
-  // 遍历每个关联规则
+  // Iterate through each association rule
   Object.keys(associations).forEach(mainLayerName => {
-    // 查找主图层在layersOrder中的索引
+    // Find the index of the main layer in layersOrder
     const mainLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === mainLayerName);
     
-    // 如果找到了主图层且DNA序列中存在该元素
+    // If the main layer is found and the element exists in the DNA sequence
     if (mainLayerIndex !== -1 && dnaSequence[mainLayerIndex]) {
-      // 获取主图层的元素名称（从DNA序列中）
+      // Get the element name of the main layer (from the DNA sequence)
       const mainLayerElement = dnaSequence[mainLayerIndex].split(":")[0];
       
-      // 遍历所有关联图层
+      // Iterate through all associated layers
       Object.keys(associations[mainLayerName]).forEach(associatedLayerName => {
-        // 检查关联类型是否为sameName
+        // Check if the association type is sameName
         if (associations[mainLayerName][associatedLayerName] === "sameName") {
-          // 查找关联图层在layersOrder中的索引
+          // Find the index of the associated layer in layersOrder
           const associatedLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === associatedLayerName);
           
-          // 如果找到了关联图层且DNA序列中存在该元素
+          // If the associated layer is found and the element exists in the DNA sequence
           if (associatedLayerIndex !== -1 && dnaSequence[associatedLayerIndex]) {
-            // 构造新的DNA元素字符串（元素名:层级）
+            // Construct a new DNA element string (elementName:layerLevel)
             const layerParts = dnaSequence[associatedLayerIndex].split(":");
             if (layerParts.length >= 2) {
               const layerLevel = layerParts[1];
@@ -622,6 +622,6 @@ const applyLayerAssociations = (dnaStr, layerConfig) => {
     }
   });
   
-  // 重新组合DNA字符串
+  // Recombine the DNA string
   return dnaSequence.join(DNA_DELIMITER);
 };

@@ -1,52 +1,52 @@
 const { performance } = require('perf_hooks');
 const { checkMemoryUsage } = require('./src/main_improved.js');
 
-// 测试函数
+// Test function
 async function runPerformanceTest() {
-  console.log("=== NFT生成性能分析 ===\n");
+  console.log("=== NFT Generation Performance Analysis ===\n");
   
-  // 检查当前内存使用
-  console.log("初始内存使用:");
+  // Check current memory usage
+  console.log("Initial memory usage:");
   checkMemoryUsage();
   
-  console.log("\n--- 原始版本分析 ---");
-  console.log("1. 图片加载: 使用Promise.all()并发加载所有图层");
-  console.log("2. 图片生成: 串行处理，一个接一个生成NFT");
-  console.log("3. 内存管理: 无主动内存管理，依赖系统垃圾回收");
-  console.log("4. 错误处理: 基本错误处理，失败可能导致整个流程中断");
-  console.log("5. 进度反馈: 基本的进度信息");
+  console.log("\n--- Original Version Analysis ---");
+  console.log("1. Image Loading: Using Promise.all() to concurrently load all layers");
+  console.log("2. Image Generation: Serial processing, generating NFTs one by one");
+  console.log("3. Memory Management: No active memory management, relying on system garbage collection");
+  console.log("4. Error Handling: Basic error handling, failures may interrupt the entire process");
+  console.log("5. Progress Feedback: Basic progress information");
   
-  console.log("\n--- 改进版本分析 ---");
-  console.log("1. 图片加载: 限制并发数量(CONCURRENT_LIMIT)，避免内存峰值");
-  console.log("2. 图片生成: 批量处理(BATCH_SIZE)，提高资源利用率");
-  console.log("3. 内存管理: 定期检查内存，必要时触发垃圾回收");
-  console.log("4. 错误处理: 更好的错误处理，单个失败不影响整体");
-  console.log("5. 进度反馈: 详细的批次进度信息");
+  console.log("\n--- Improved Version Analysis ---");
+  console.log("1. Image Loading: Limiting concurrency (CONCURRENT_LIMIT) to avoid memory peaks");
+  console.log("2. Image Generation: Batch processing (BATCH_SIZE) to improve resource utilization");
+  console.log("3. Memory Management: Regularly checking memory and triggering garbage collection when necessary");
+  console.log("4. Error Handling: Better error handling, individual failures do not affect the whole");
+  console.log("5. Progress Feedback: Detailed batch progress information");
   
-  console.log("\n=== 并发问题分析 ===");
-  console.log("1. 内存压力: 同时加载多个图层图片会占用大量内存");
-  console.log("2. 文件系统压力: 大量并发读写操作可能导致文件系统瓶颈");
-  console.log("3. CPU密集型任务: 图片合成是CPU密集型操作，Node.js单线程可能成为瓶颈");
-  console.log("4. 事件循环阻塞: 长时间运行的图片处理可能阻塞事件循环");
+  console.log("\n=== Concurrency Issue Analysis ===");
+  console.log("1. Memory Pressure: Loading multiple layer images simultaneously occupies a lot of memory");
+  console.log("2. File System Pressure: Large amounts of concurrent read/write operations may cause file system bottlenecks");
+  console.log("3. CPU-intensive Tasks: Image compositing is CPU-intensive, Node.js single-thread may become a bottleneck");
+  console.log("4. Event Loop Blocking: Long-running image processing may block the event loop");
   
-  console.log("\n=== 改进版本的优势 ===");
-  console.log("1. 并发控制: 限制同时加载的图片数量，避免内存峰值过高");
-  console.log("2. 批量处理: 将大量任务分成小批次，提高资源利用率");
-  console.log("3. 内存监控: 定期检查内存使用，必要时触发垃圾回收");
-  console.log("4. 错误处理: 更好的错误处理和恢复机制");
-  console.log("5. 进度反馈: 提供更详细的进度信息");
+  console.log("\n=== Advantages of Improved Version ===");
+  console.log("1. Concurrency Control: Limiting the number of images loaded simultaneously to avoid high memory peaks");
+  console.log("2. Batch Processing: Dividing large tasks into small batches to improve resource utilization");
+  console.log("3. Memory Monitoring: Regularly checking memory usage and triggering garbage collection when necessary");
+  console.log("4. Error Handling: Better error handling and recovery mechanisms");
+  console.log("5. Progress Feedback: Providing more detailed progress information");
   
-  console.log("\n=== 使用建议 ===");
-  console.log("1. 对于少量NFT（<100），原始版本足够");
-  console.log("2. 对于大量NFT（>100），建议使用改进版本");
-  console.log("3. 如果系统内存有限（<4GB），必须使用改进版本");
-  console.log("4. 可以根据系统配置调整CONCURRENT_LIMIT和BATCH_SIZE参数");
-  console.log("5. 在生产环境中，建议启用Node.js的垃圾回收标志: node --expose-gc index.js");
+  console.log("\n=== Usage Recommendations ===");
+  console.log("1. For small quantities of NFTs (<100), the original version is sufficient");
+  console.log("2. For large quantities of NFTs (>100), it is recommended to use the improved version");
+  console.log("3. If system memory is limited (<4GB), the improved version must be used");
+  console.log("4. CONCURRENT_LIMIT and BATCH_SIZE parameters can be adjusted according to system configuration");
+  console.log("5. In production environments, it is recommended to enable Node.js garbage collection flag: node --expose-gc index.js");
   
-  console.log("\n=== 实际使用方法 ===");
-  console.log("1. 使用原始版本: node index.js");
-  console.log("2. 使用改进版本: 需要修改index.js，将startCreating替换为startCreatingWithConcurrencyControl");
+  console.log("\n=== Actual Usage Method ===");
+  console.log("1. Using Original Version: node index.js");
+  console.log("2. Using Improved Version: Need to modify index.js, replace startCreating with startCreatingWithConcurrencyControl");
 }
 
-// 运行测试
+// Run test
 runPerformanceTest().catch(console.error);

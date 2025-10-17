@@ -1,118 +1,118 @@
-// 最终测试脚本验证整个系统中的图层关联必填项机制
+// Final test script to validate the mandatory layer association mechanism throughout the system
 const fs = require('fs');
 const path = require('path');
 
-// 模拟DNA分隔符
+// Simulated DNA delimiter
 const DNA_DELIMITER = "-";
 
 /**
- * 应用图层关联规则的函数（必填项）
- * @param {string} dnaStr - DNA字符串
- * @param {Object} layerConfig - 图层配置
- * @returns {string} 更新后的DNA字符串
- * @throws {Error} 当找不到同名元素时抛出异常
+ * Function to apply layer association rules (mandatory)
+ * @param {string} dnaStr - DNA string
+ * @param {Object} layerConfig - Layer configuration
+ * @returns {string} Updated DNA string
+ * @throws {Error} Throws an exception when a matching element is not found
  */
 const applyLayerAssociations = (dnaStr, layerConfig) => {
-  // 检查是否存在图层关联配置
+  // Check if layer association configuration exists
   if (!layerConfig.layerAssociations) {
-    console.warn("警告: 图层关联配置缺失");
+    console.warn("Warning: Layer association configuration is missing");
     return dnaStr;
   }
 
-  // 将DNA字符串分割为数组
+  // Split DNA string into an array
   let dnaSequence = dnaStr.split(DNA_DELIMITER);
   
-  // 获取图层关联配置
+  // Get layer association configuration
   const associations = layerConfig.layerAssociations;
   
-  // 遍历每个关联规则
+  // Iterate through each association rule
   Object.keys(associations).forEach(mainLayerName => {
-    // 查找主图层在layersOrder中的索引
+    // Find the index of the main layer in layersOrder
     const mainLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === mainLayerName);
     
-    // 检查主图层是否存在
+    // Check if the main layer exists
     if (mainLayerIndex === -1) {
-      throw new Error(`致命错误: 在layersOrder中找不到主图层 "${mainLayerName}"`);
+      throw new Error(`Fatal error: Main layer "${mainLayerName}" not found in layersOrder`);
     }
     
-    // 检查DNA序列中是否存在主图层元素
+    // Check if the main layer element exists in the DNA sequence
     if (!dnaSequence[mainLayerIndex]) {
-      throw new Error(`致命错误: DNA序列中缺少主图层 "${mainLayerName}" 的元素`);
+      throw new Error(`Fatal error: Missing element for main layer "${mainLayerName}" in DNA sequence`);
     }
     
-    // 获取主图层的元素名称（从DNA序列中）
+    // Get the main layer's element name (from DNA sequence)
     const mainLayerElement = dnaSequence[mainLayerIndex].split(":")[0];
-    console.log(`主图层 "${mainLayerName}" 的元素: ${mainLayerElement}`);
+    console.log(`Element of main layer "${mainLayerName}": ${mainLayerElement}`);
     
-    // 遍历所有关联图层
+    // Iterate through all associated layers
     Object.keys(associations[mainLayerName]).forEach(associatedLayerName => {
-      // 检查关联类型是否为sameName
+      // Check if the association type is sameName
       if (associations[mainLayerName][associatedLayerName] === "sameName") {
-        // 查找关联图层在layersOrder中的索引
+        // Find the index of the associated layer in layersOrder
         const associatedLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === associatedLayerName);
         
-        // 检查关联图层是否存在
+        // Check if the associated layer exists
         if (associatedLayerIndex === -1) {
-          throw new Error(`致命错误: 在layersOrder中找不到关联图层 "${associatedLayerName}"`);
+          throw new Error(`Fatal error: Associated layer "${associatedLayerName}" not found in layersOrder`);
         }
         
-        // 检查DNA序列中是否存在关联图层元素
+        // Check if the associated layer element exists in the DNA sequence
         if (!dnaSequence[associatedLayerIndex]) {
-          throw new Error(`致命错误: DNA序列中缺少关联图层 "${associatedLayerName}" 的元素`);
+          throw new Error(`Fatal error: Missing element for associated layer "${associatedLayerName}" in DNA sequence`);
         }
         
-        // 构造新的DNA元素字符串（元素名:层级）
+        // Construct new DNA element string (element_name:layer_level)
         const layerParts = dnaSequence[associatedLayerIndex].split(":");
         if (layerParts.length >= 2) {
           const layerLevel = layerParts[1];
           const oldElementName = layerParts[0];
           
-          // 检查关联图层元素是否与主图层元素同名
+          // Check if the associated layer element has the same name as the main layer element
           if (oldElementName !== mainLayerElement) {
-            console.log(`关联图层 "${associatedLayerName}" 的元素 "${oldElementName}" 与主图层 "${mainLayerName}" 的元素 "${mainLayerElement}" 不匹配，正在更新...`);
+            console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" does not match element "${mainLayerElement}" of main layer "${mainLayerName}", updating...`);
             dnaSequence[associatedLayerIndex] = `${mainLayerElement}:${layerLevel}`;
-            console.log(`已将关联图层 "${associatedLayerName}" 的元素更新为: ${mainLayerElement}`);
+            console.log(`Updated element of associated layer "${associatedLayerName}" to: ${mainLayerElement}`);
           } else {
-            console.log(`关联图层 "${associatedLayerName}" 的元素 "${oldElementName}" 与主图层 "${mainLayerName}" 的元素 "${mainLayerElement}" 已匹配，无需更新`);
+            console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" already matches element "${mainLayerElement}" of main layer "${mainLayerName}", no update needed`);
           }
         } else {
-          throw new Error(`致命错误: 关联图层 "${associatedLayerName}" 的DNA格式不正确`);
+          throw new Error(`Fatal error: Incorrect DNA format for associated layer "${associatedLayerName}"`);
         }
       }
     });
   });
   
-  // 重新组合DNA字符串
+  // Re-combine DNA string
   const updatedDnaStr = dnaSequence.join(DNA_DELIMITER);
-  console.log(`图层关联处理完成，更新后的DNA: ${updatedDnaStr}`);
+  console.log(`Layer association processing completed, updated DNA: ${updatedDnaStr}`);
   return updatedDnaStr;
 };
 
 /**
- * 模拟createDna函数
- * @param {Array} layers - 图层数组
- * @param {Object} layerConfig - 图层配置
- * @returns {string} DNA字符串
+ * Simulate createDna function
+ * @param {Array} layers - Array of layers
+ * @param {Object} layerConfig - Layer configuration
+ * @returns {string} DNA string
  */
 const createDna = (layers, layerConfig = null) => {
   let randNum = [];
   layers.forEach((layer) => {
-    // 随机选择一个元素
+    // Randomly select an element
     const randomIndex = Math.floor(Math.random() * layer.elements.length);
     const element = layer.elements[randomIndex];
     randNum.push(`${element.id}:${element.filename}`);
   });
   
-  // 应用图层关联规则（如果提供了图层配置）
+  // Apply layer association rules (if layer configuration is provided)
   let dnaStr = randNum.join(DNA_DELIMITER);
-  console.log(`生成的原始DNA: ${dnaStr}`);
+  console.log(`Generated raw DNA: ${dnaStr}`);
   
   if (layerConfig && layerConfig.layerAssociations) {
     try {
       dnaStr = applyLayerAssociations(dnaStr, layerConfig);
     } catch (error) {
-      console.error("图层关联处理失败:", error.message);
-      throw error; // 重新抛出异常，终止NFT生成
+      console.error("Layer association processing failed:", error.message);
+      throw error; // Re-throw exception to terminate NFT generation
     }
   }
   
@@ -120,13 +120,13 @@ const createDna = (layers, layerConfig = null) => {
 };
 
 /**
- * 模拟NFT生成函数
- * @param {Object} layerConfig - 图层配置
+ * Simulate NFT generation function
+ * @param {Object} layerConfig - Layer configuration
  */
 const generateNFT = (layerConfig) => {
-  console.log(`\n开始生成NFT...`);
+  console.log(`\nStarting NFT generation...`);
   
-  // 模拟图层数据
+  // Simulate layer data
   const layers = layerConfig.layersOrder.map(layer => {
     return {
       name: layer.name,
@@ -141,17 +141,17 @@ const generateNFT = (layerConfig) => {
   try {
     const dna = createDna(layers, layerConfig);
     console.log(`NFT DNA: ${dna}`);
-    console.log("NFT生成成功!\n");
+    console.log("NFT generated successfully!\n");
     return true;
   } catch (error) {
-    console.error("NFT生成失败:", error.message);
-    console.log("按要求终止运行\n");
+    console.error("NFT generation failed:", error.message);
+    console.log("Terminating as required\n");
     return false;
   }
 };
 
-// 测试用例1: 正常情况 - 所有图层都存在且需要更新
-console.log("=== 测试用例1: 正常情况 ===");
+// Test Case 1: Normal case - All layers exist and need updating
+console.log("=== Test Case 1: Normal Case ===");
 const validLayerConfig = {
   layersOrder: [
     { name: "background" },
@@ -168,8 +168,8 @@ const validLayerConfig = {
 
 generateNFT(validLayerConfig);
 
-// 测试用例2: 主图层不存在（应该抛出异常并终止运行）
-console.log("=== 测试用例2: 主图层不存在 ===");
+// Test Case 2: Main layer does not exist (should throw an exception and terminate)
+console.log("=== Test Case 2: Main Layer Does Not Exist ===");
 const invalidLayerConfig1 = {
   layersOrder: [
     { name: "background" },
@@ -178,7 +178,7 @@ const invalidLayerConfig1 = {
     { name: "hair" }
   ],
   layerAssociations: {
-    nonExistentLayer: {  // 不存在的图层
+    nonExistentLayer: {  // Non-existent layer
       clothes: "sameName"
     }
   }
@@ -186,8 +186,8 @@ const invalidLayerConfig1 = {
 
 generateNFT(invalidLayerConfig1);
 
-// 测试用例3: 关联图层不存在（应该抛出异常并终止运行）
-console.log("=== 测试用例3: 关联图层不存在 ===");
+// Test Case 3: Associated layer does not exist (should throw an exception and terminate)
+console.log("=== Test Case 3: Associated Layer Does Not Exist ===");
 const invalidLayerConfig2 = {
   layersOrder: [
     { name: "background" },
@@ -197,20 +197,20 @@ const invalidLayerConfig2 = {
   ],
   layerAssociations: {
     body: {
-      nonExistentLayer: "sameName"  // 不存在的关联图层
+      nonExistentLayer: "sameName"  // Non-existent associated layer
     }
   }
 };
 
 generateNFT(invalidLayerConfig2);
 
-// 测试用例4: DNA序列中缺少元素（应该抛出异常并终止运行）
-console.log("=== 测试用例4: DNA序列中缺少元素 ===");
+// Test Case 4: Missing element in DNA sequence (should throw an exception and terminate)
+console.log("=== Test Case 4: Missing Element in DNA Sequence ===");
 const invalidLayerConfig3 = {
   layersOrder: [
     { name: "background" },
     { name: "body" }
-    // 缺少clothes和hair图层，但关联配置中引用了clothes
+    // Missing clothes and hair layers, but clothes is referenced in association config
   ],
   layerAssociations: {
     body: {
@@ -221,4 +221,4 @@ const invalidLayerConfig3 = {
 
 generateNFT(invalidLayerConfig3);
 
-console.log("所有测试完成!");
+console.log("All tests completed!");
