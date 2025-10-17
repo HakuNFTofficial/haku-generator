@@ -79,7 +79,7 @@ const getElements = (path) => {
     .filter((item) => !/(^|\/)\.[^\/\.]/g.test(item))
     .map((i, index) => {
       if (i.includes("-")) {
-        throw new Error(`图层文件名不能包含破折号(-)，请修改文件名: ${i}。建议将破折号(-)替换为下划线(_)或其他字符。`);
+        throw new Error(`Layer filename cannot contain hyphens (-), please modify filename: ${i}. It is recommended to replace hyphens (-) with underscores (_) or other characters.`);
       }
       return {
         id: index,
@@ -215,7 +215,7 @@ const addAttributes = (_element) => {
 };
 
 const drawElement = (_renderObject, _index, _layersLen) => {
-  // 如果图像加载失败或selectedElement不存在，跳过绘制
+  // Skip drawing if image loading fails or selectedElement does not exist
   if (!_renderObject.loadedImage || !_renderObject.layer.selectedElement) {
     console.warn(`Skipping layer ${_renderObject.layer.name} due to missing element or image`);
     addAttributes(_renderObject);
@@ -272,7 +272,7 @@ const loadLayerImg = async (_layer) => {
 const constructLayerToDna = (_dna = "", _layers = []) => {
   const dnaSequence = _dna.split(DNA_DELIMITER);
   let mappedDnaToLayers = _layers.map((layer, index) => {
-    // 检查DNA序列中是否存在该索引的元素
+    // Check if an element exists at this index in the DNA sequence
     if (dnaSequence[index]) {
       let selectedElement = layer.elements.find(
         (e) => e.id == cleanDna(dnaSequence[index])
@@ -284,7 +284,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
         selectedElement: selectedElement,
       };
     } else {
-      // 如果DNA序列中不存在该索引的元素，返回空的selectedElement
+      // If no element exists at this index in the DNA sequence, return empty selectedElement
       return {
         name: layer.name,
         blend: layer.blend,
@@ -666,7 +666,7 @@ const startCreatingWithConcurrencyControl = async () => {
   }
   
   while (layerConfigIndex < layerConfigurations.length) {
-    // 为每个配置生成独立的abstractedIndexes数组
+    // Generate independent abstractedIndexes array for each configuration
     let abstractedIndexes = [];
     for (
       let i = network == NETWORK.sol ? 0 : 1;
@@ -680,10 +680,10 @@ const startCreatingWithConcurrencyControl = async () => {
       abstractedIndexes = shuffle(abstractedIndexes);
     }
     
-    // 使用配置中指定的性别
+    // Use gender specified in configuration
     const gender = layerConfigurations[layerConfigIndex].gender || (Math.random() > 0.5 ? "male" : "female");
     
-    // 根据性别加载对应的图层配置
+    // Load corresponding layer configuration based on gender
     const layers = layersSetup(
       layerConfigurations[layerConfigIndex].layersOrder, gender
     );
@@ -692,9 +692,9 @@ const startCreatingWithConcurrencyControl = async () => {
       ? console.log("Editions left to create: ", abstractedIndexes)
       : null;
       
-    console.log(`开始生成 ${layerConfigurations[layerConfigIndex].growEditionSizeTo} 张 ${gender} NFT图片`);
+    console.log(`Starting generation of ${layerConfigurations[layerConfigIndex].growEditionSizeTo} ${gender} NFT images`);
     
-    // 使用批量处理函数
+    // Use batch processing function
     const result = await batchCreateNFTs(
       layers, 
       layerConfigurations[layerConfigIndex], 
@@ -703,15 +703,15 @@ const startCreatingWithConcurrencyControl = async () => {
       gender
     );
     
-    console.log(`生成完成: 成功 ${result.successCount} 张, 失败 ${result.failCount} 张`);
+    console.log(`Generation completed: Successfully generated ${result.successCount} images, failed ${result.failCount} images`);
     
     layerConfigIndex++;
   }
   
   writeMetaData(JSON.stringify(metadataList, null, 2));
-  console.log("所有NFT生成完成!");
+  console.log("All NFT generation completed!");
 };
-// 导出函数
+// Export functions
 module.exports = {
   startCreatingWithConcurrencyControl,
   buildSetup,
