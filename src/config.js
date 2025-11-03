@@ -31,6 +31,7 @@ const layerConfigurations = [
     layersOrder: [
       { name: "background", opacity: 1.0 },
       { name: "clothes2", opacity: 1.0 },
+      { name: "hoodies2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
@@ -40,12 +41,27 @@ const layerConfigurations = [
       { name: "nose", opacity: 1.0 },
       { name: "glassesright", opacity: 1.0 },
       { name: "clothes1", opacity: 1.0 },
+      { name: "hoodies1", opacity: 1.0 },
       { name: "hair2", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
       
     ],
+    // Layer group configuration: define groups of layers that are related
+    layerGroups: {
+      clothes: ["clothes1", "clothes2"],
+      hoodies: ["hoodies1", "hoodies2"]
+    },
+    // Group exclusivity configuration: define which groups are mutually exclusive
+    exclusiveGroups: [
+      ["clothes", "hoodies"]
+    ],
+    // Group polling configuration: define the ratio for polling between groups
+    groupPolling: {
+      "clothes": 1,
+      "hoodies": 1
+    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 and hair3 are associated layers
@@ -58,6 +74,9 @@ const layerConfigurations = [
       },
       clothes2: {
         clothes1: "sameName"
+      },
+      hoodies2: {
+        hoodies1: "sameName"
       },
       body: {
         nose: "sameName",
@@ -73,6 +92,7 @@ const layerConfigurations = [
       { name: "background", opacity: 1.0 },
       { name: "hair2", opacity: 1.0 },
       { name: "clothes2", opacity: 1.0 },
+      { name: "hoodies2", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
       { name: "mouth", opacity: 1.0 },
@@ -84,7 +104,22 @@ const layerConfigurations = [
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
       { name: "clothes1", opacity: 1.0 },
+      { name: "hoodies1", opacity: 1.0 },
     ],
+    // Layer group configuration: define groups of layers that are related
+    layerGroups: {
+      clothes: ["clothes1", "clothes2"],
+      hoodies: ["hoodies1", "hoodies2"]
+    },
+    // Group exclusivity configuration: define which groups are mutually exclusive
+    exclusiveGroups: [
+      ["clothes", "hoodies"]
+    ],
+    // Group polling configuration: define the ratio for polling between groups
+    groupPolling: {
+      "clothes": 1,
+      "hoodies": 1
+    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 is the associated layer
@@ -96,6 +131,9 @@ const layerConfigurations = [
       },
       clothes2: {
         clothes1: "sameName"
+      },
+      hoodies2: {
+        hoodies1: "sameName"
       },
       body: {
         nose: "sameName",
