@@ -274,6 +274,16 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let mappedDnaToLayers = _layers.map((layer, index) => {
     // Check if an element exists at this index in the DNA sequence
     if (dnaSequence[index]) {
+      // Check if this layer is marked as "none" (should be skipped)
+      if (dnaSequence[index] === "none:none") {
+        return {
+          name: layer.name,
+          blend: layer.blend,
+          opacity: layer.opacity,
+          selectedElement: null,
+        };
+      }
+      
       let selectedElement = layer.elements.find(
         (e) => e.id == cleanDna(dnaSequence[index])
       );
@@ -325,14 +335,160 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
   return !_DnaList.has(_filteredDNA);
 };
 
+// Helper function to select a group based on polling ratio
+const selectGroupByPolling = (groupPolling) => {
+  if (!groupPolling || Object.keys(groupPolling).length === 0) {
+    return null;
+  }
+  
+  // Create an array of groups with their respective weights
+  const groups = [];
+  Object.keys(groupPolling).forEach(groupName => {
+    const weight = groupPolling[groupName];
+    if (weight > 0) {
+      groups.push({ name: groupName, weight });
+    }
+  });
+  
+  if (groups.length === 0) {
+    return null;
+  }
+  
+  // Calculate total weight
+  const totalWeight = groups.reduce((sum, group) => sum + group.weight, 0);
+  
+  // Select a random group based on weight
+  let random = Math.floor(Math.random() * totalWeight);
+  for (const group of groups) {
+    random -= group.weight;
+    if (random < 0) {
+      return group.name;
+    }
+  }
+  
+  // Fallback to first group if something goes wrong
+  return groups[0].name;
+};
+
+// Helper function to get all layers in a group
+const getLayersInGroup = (groupName, layerGroups, layersOrder) => {
+  if (!layerGroups || !layerGroups[groupName]) {
+    return [];
+  }
+  
+  const groupLayerNames = layerGroups[groupName];
+  return layersOrder.filter(layer => groupLayerNames.includes(layer.name));
+};
+
+// Helper function to get all layers not in excluded groups
+const getLayersNotInExcludedGroups = (excludedGroups, layerGroups, layers) => {
+  if (!excludedGroups || excludedGroups.length === 0) {
+    return layers;
+  }
+  
+  // Get all layer names in excluded groups
+  const excludedLayerNames = new Set();
+  excludedGroups.forEach(groupName => {
+    if (layerGroups && layerGroups[groupName]) {
+      layerGroups[groupName].forEach(layerName => {
+        excludedLayerNames.add(layerName);
+      });
+    }
+  });
+  
+  // Filter out excluded layers
+  return layers.filter(layer => !excludedLayerNames.has(layer.name));
+};
+
 const createDna = (_layers, _layerConfig = null) => {
   let randNum = [];
-  _layers.forEach((layer) => {
+  
+  // Get layer configuration
+  const layerGroups = _layerConfig && _layerConfig.layerGroups || {};
+  const exclusiveGroups = _layerConfig && _layerConfig.exclusiveGroups || [];
+  const groupPolling = _layerConfig && _layerConfig.groupPolling || {};
+  const layersOrder = _layerConfig && _layerConfig.layersOrder || [];
+  
+  // Process group selection
+  const selectedGroups = new Set();
+  const excludedGroups = new Set();
+  
+  // Handle exclusive groups
+  exclusiveGroups.forEach(groupSet => {
+    // Select one group from each exclusive set based on polling ratio
+    const availableGroups = groupSet.filter(group => !excludedGroups.has(group));
+    if (availableGroups.length === 0) {
+      return;
+    }
+    
+    // Create a subset of groupPolling for available groups
+    const availablePolling = {};
+    availableGroups.forEach(group => {
+      if (groupPolling[group] !== undefined) {
+        availablePolling[group] = groupPolling[group];
+      } else {
+        // Default to 1 if group not in polling config
+        availablePolling[group] = 1;
+      }
+    });
+    
+    const selectedGroup = selectGroupByPolling(availablePolling);
+    if (selectedGroup) {
+      selectedGroups.add(selectedGroup);
+      
+      // Exclude all other groups in this exclusive set
+      groupSet.forEach(group => {
+        if (group !== selectedGroup) {
+          excludedGroups.add(group);
+        }
+      });
+    }
+  });
+  
+  // Add any non-exclusive groups that are in polling config
+  Object.keys(groupPolling).forEach(group => {
+    if (!excludedGroups.has(group) && !selectedGroups.has(group)) {
+      // Check if this group is part of any exclusive set
+      const isExclusive = exclusiveGroups.some(groupSet => groupSet.includes(group));
+      if (!isExclusive) {
+        selectedGroups.add(group);
+      }
+    }
+  });
+  
+  // Filter layers to exclude those in excluded groups
+  const filteredLayers = getLayersNotInExcludedGroups(Array.from(excludedGroups), layerGroups, _layers);
+  
+  // Process each filtered layer
+  filteredLayers.forEach((layer, index) => {
     const elements = layer.elements;
+    
+    // Check if this layer is in any group
+    let layerInGroup = false;
+    let layerGroup = null;
+    
+    Object.keys(layerGroups).forEach(groupName => {
+      if (layerGroups[groupName].includes(layer.name)) {
+        layerInGroup = true;
+        layerGroup = groupName;
+      }
+    });
+    
+    // If layer is in a group, check if the group is selected
+    if (layerInGroup) {
+      if (!selectedGroups.has(layerGroup)) {
+        // Skip this layer if its group is not selected
+        randNum.push("none:none");
+        return;
+      }
+    }
+    
+    // If layer is not skipped, select an element normally
     var totalWeight = 0;
     elements.forEach((element) => {
       totalWeight += element.weight;
     });
+    
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
     for (var i = 0; i < elements.length; i++) {
@@ -432,6 +588,13 @@ const applyLayerAssociations = (dnaStr, layerConfig) => {
     
     // Get the element name of the main layer (from DNA sequence)
     const mainLayerElement = dnaSequence[mainLayerIndex].split(":")[0];
+    
+    // Skip association if main layer is marked as "none" (skipped)
+    if (mainLayerElement === "none") {
+      console.log(`Skipping association for main layer "${mainLayerName}" because it's marked as none`);
+      return;
+    }
+    
     console.log(`Element of main layer "${mainLayerName}": ${mainLayerElement}`);
     
     // Iterate through all associated layers
@@ -449,6 +612,13 @@ const applyLayerAssociations = (dnaStr, layerConfig) => {
         // Check if the associated layer element exists in the DNA sequence
         if (!dnaSequence[associatedLayerIndex]) {
           throw new Error(`Fatal error: Missing element for associated layer "${associatedLayerName}" in DNA sequence`);
+        }
+        
+        // Skip associated layer if it's marked as "none" (skipped)
+        const associatedLayerElement = dnaSequence[associatedLayerIndex].split(":")[0];
+        if (associatedLayerElement === "none") {
+          console.log(`Skipping associated layer "${associatedLayerName}" because it's marked as none`);
+          return;
         }
         
         // Construct new DNA element string (element_name:layer_level)
@@ -715,5 +885,7 @@ const startCreatingWithConcurrencyControl = async () => {
 module.exports = {
   startCreatingWithConcurrencyControl,
   buildSetup,
-  checkMemoryUsage
+  checkMemoryUsage,
+  createDna,
+  applyLayerAssociations
 };
