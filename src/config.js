@@ -5,17 +5,17 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const network = NETWORK.eth;
 
 // General metadata for Ethereum
-const namePrefix = "Your Collection";
+const namePrefix = "Haku";
 const description = "Remember to replace this description";
-const baseUri = "ipfs://NewUriToReplace";
+const baseUri = "ipfs://QmUdbbshUthth1hk2Nr1YD2GmwpNY61aFG3kShRs9fDJCJ";
 
 const solanaMetadata = {
-  symbol: "YC",
-  seller_fee_basis_points: 1000, // Define how much % you want from secondary market sales 1000 = 10%
-  external_url: "https://www.youtube.com/c/hashlipsnft",
+  symbol: "Haku",
+  seller_fee_basis_points: 10000, // Define how much % you want from secondary market sales 1000 = 10%
+  external_url: "https://www.hakupump.club/",
   creators: [
     {
-      address: "7fXNuer5sbZtaTEPhtJ5g5gNtuyRoKkvxdjEjEnPN4mC",
+      address: "0xd693a84a55fd1cba3e1b5d82571b4cfe1af14510",
       share: 100,
     },
   ],
@@ -26,11 +26,18 @@ const solanaMetadata = {
 const layerConfigurations = [
   // Female configuration
   {
-    growEditionSizeTo: 500,
+    growEditionSizeTo: 300,
     gender: "female",
+    excludeSuffixes: {
+      //"*": "_nohoodie",  // Apply to all layers by default
+      // _nohoodie need exclude: close2 and close1
+      // Different rules can be added for specific layers
+      // "specificLayer": "_special"
+    },
     layersOrder: [
-      { name: "background", opacity: 1.0 },
+      { name: "background", opacity: 1.0, bypassDNA: true },
       { name: "clothes2", opacity: 1.0 },
+     // { name: "hoodie2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
@@ -44,7 +51,7 @@ const layerConfigurations = [
       { name: "ear", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
-      
+      //{ name: "hoodie1", opacity: 1.0 },
     ],
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
@@ -57,8 +64,11 @@ const layerConfigurations = [
         glassesright: "sameName"
       },
       clothes2: {
-        clothes1: "sameName"
+         clothes1: "sameName"
       },
+      // hoodie2: {
+      //    hoodie1: "sameName"
+      // },
       body: {
         nose: "sameName",
         ear: "sameName"
@@ -67,11 +77,18 @@ const layerConfigurations = [
   },
   // Male configuration
   {
-    growEditionSizeTo: 500,
+    growEditionSizeTo: 100,
     gender: "male",
+    excludeSuffixes: {
+      //"*": "_nohoodie",  // Apply to all layers by default 
+      // _nohoodie need exclude: close2 and close1
+      // Different rules can be added for specific layers
+      // "specificLayer": "_special"
+    },
     layersOrder: [
-      { name: "background", opacity: 1.0 },
-      { name: "hair2", opacity: 1.0 },
+      { name: "background", opacity: 1.0, bypassDNA: true },
+      //{ name: "hoodie2", opacity: 1.0 },
+      { name: "hair3", opacity: 1.0 },
       { name: "clothes2", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
@@ -79,24 +96,30 @@ const layerConfigurations = [
       { name: "eyes", opacity: 1.0 },
       { name: "glassesleft", opacity: 1.0 },
       { name: "nose", opacity: 1.0 },
+      { name: "hair2", opacity: 1.0 },
       { name: "glassesright", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
+      { name: "clothes1", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
-      { name: "clothes1", opacity: 1.0 },
+     // { name: "hoodie1", opacity: 1.0 },
     ],
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 is the associated layer
-      hair2: {
-        hair1: "sameName"
+      hair3: {
+        hair1: "sameName",
+        hair2: "sameName"
       },
       glassesleft: {
         glassesright: "sameName"
       },
       clothes2: {
-        clothes1: "sameName"
+         clothes1: "sameName"
       },
+      // hoodie2: {
+      //   hoodie1: "sameName"
+      // },
       body: {
         nose: "sameName",
         ear: "sameName"

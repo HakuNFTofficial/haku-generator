@@ -1,0 +1,7 @@
+#!/bin/bash
+# NFT generator wrapper script
+# Usage: ./nft [--config path/to/config.js]
+
+cd "$(dirname "$0")"
+node index.js "$@"
+

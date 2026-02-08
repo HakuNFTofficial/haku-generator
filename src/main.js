@@ -347,11 +347,17 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
  * items without modifying the stored DNA.
  *
  * @param {String} _dna New DNA string
+ * @param {Array} _layersOrder Optional - Array of layer order config
  * @returns new DNA string with any items that should be filtered, removed.
  */
-const filterDNAOptions = (_dna) => {
+const filterDNAOptions = (_dna, _layersOrder = []) => {
   const dnaItems = _dna.split(DNA_DELIMITER);
-  const filteredDNA = dnaItems.filter((element) => {
+  const filteredDNA = dnaItems.filter((element, index) => {
+    // Check if this layer should be bypassed in DNA (from config)
+    if (_layersOrder.length > 0 && _layersOrder[index] && _layersOrder[index].bypassDNA) {
+      return false;
+    }
+    
     const query = /(\?.*$)/;
     const querystring = query.exec(element);
     if (!querystring) {
@@ -381,8 +387,8 @@ const removeQueryStrings = (_dna) => {
   return _dna.replace(query, "");
 };
 
-const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
-  const _filteredDNA = filterDNAOptions(_dna);
+const isDnaUnique = (_DnaList = new Set(), _dna = "", _layersOrder = []) => {
+  const _filteredDNA = filterDNAOptions(_dna, _layersOrder);
   return !_DnaList.has(_filteredDNA);
 };
 
@@ -502,7 +508,7 @@ const startCreating = async () => {
       editionCount <= layerConfigurations[layerConfigIndex].growEditionSizeTo
     ) {
       let newDna = createDna(layers, layerConfigurations[layerConfigIndex]);
-      if (isDnaUnique(dnaList, newDna)) {
+      if (isDnaUnique(dnaList, newDna, layerConfigurations[layerConfigIndex].layersOrder)) {
         let results = constructLayerToDna(newDna, layers);
         let loadedElements = [];
 
@@ -552,7 +558,7 @@ const startCreating = async () => {
             )}`
           );
         });
-        dnaList.add(filterDNAOptions(newDna));
+        dnaList.add(filterDNAOptions(newDna, layerConfigurations[layerConfigIndex].layersOrder));
         editionCount++;
         abstractedIndexes.shift();
       } else {
