@@ -4,6 +4,9 @@ node_modules/
 # Build output
 build/
 
+# Layers folder (source images)
+layers/
+
 # OS files
 .DS_Store
 Thumbs.db
