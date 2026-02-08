@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Zip files in project
+*.zip
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE files
+.vscode/
+.idea/
