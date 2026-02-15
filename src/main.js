@@ -34,6 +34,12 @@ const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 
 let hashlipsGiffer = null;
 
+// Image cache to avoid repeated loading of the same images
+const imageCache = new Map();
+// Cache statistics
+let cacheHits = 0;
+let cacheMisses = 0;
+
 const buildSetup = () => {
   if (fs.existsSync(buildDir)) {
     fs.rmdirSync(buildDir, { recursive: true });
@@ -268,7 +274,27 @@ const loadLayerImg = async (_layer) => {
         return;
       }
       
+      // Check cache first
+      const cacheKey = _layer.selectedElement.path;
+      if (imageCache.has(cacheKey)) {
+        cacheHits++;
+        if (debugLogs) {
+          console.log(`Cache HIT: ${cacheKey} (Total hits: ${cacheHits})`);
+        }
+        resolve({ layer: _layer, loadedImage: imageCache.get(cacheKey) });
+        return;
+      }
+      
+      // Load image from disk
       const image = await loadImage(`${_layer.selectedElement.path}`);
+      
+      // Store in cache
+      imageCache.set(cacheKey, image);
+      cacheMisses++;
+      if (debugLogs) {
+        console.log(`Cache MISS: ${cacheKey} (Total misses: ${cacheMisses}, Cache size: ${imageCache.size})`);
+      }
+      
       resolve({ layer: _layer, loadedImage: image });
     });
   } catch (error) {
@@ -276,6 +302,32 @@ const loadLayerImg = async (_layer) => {
     // Return an empty object instead of throwing an error
     return { layer: _layer, loadedImage: null };
   }
+};
+
+/**
+ * Clear the image cache
+ * Call this function to free up memory when needed
+ */
+const clearImageCache = () => {
+  const size = imageCache.size;
+  imageCache.clear();
+  console.log(`Image cache cleared. Removed ${size} cached images.`);
+  // Reset statistics
+  cacheHits = 0;
+  cacheMisses = 0;
+};
+
+/**
+ * Get cache statistics
+ * @returns {Object} Cache statistics object
+ */
+const getCacheStats = () => {
+  return {
+    size: imageCache.size,
+    hits: cacheHits,
+    misses: cacheMisses,
+    hitRate: cacheHits + cacheMisses > 0 ? ((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(2) + '%' : '0%'
+  };
 };
 
 const addText = (_sig, x, y, size) => {
@@ -473,6 +525,10 @@ const startCreating = async () => {
   // Clear metadataList and dnaList
   metadataList = [];
   dnaList.clear();
+  // Clear image cache
+  imageCache.clear();
+  cacheHits = 0;
+  cacheMisses = 0;
   
   while (layerConfigIndex < layerConfigurations.length) {
     // Generate independent abstractedIndexes array for each configuration
@@ -575,9 +631,18 @@ const startCreating = async () => {
     layerConfigIndex++;
   }
   writeMetaData(JSON.stringify(metadataList, null, 2));
+  
+  // Print cache statistics
+  const stats = getCacheStats();
+  console.log("\n=== Image Cache Statistics ===");
+  console.log(`Cache size: ${stats.size} images`);
+  console.log(`Cache hits: ${stats.hits}`);
+  console.log(`Cache misses: ${stats.misses}`);
+  console.log(`Cache hit rate: ${stats.hitRate}`);
+  console.log("==============================\n");
 };
 
-module.exports = { startCreating, buildSetup, getElements };
+module.exports = { startCreating, buildSetup, getElements, clearImageCache, getCacheStats };
 
 /**
  * Apply layer association rules

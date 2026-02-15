@@ -98,9 +98,6 @@ const getElements = (path, excludeSuffix = null) => {
     // Filter out files with the specified suffix if provided
     .filter((item) => {
       if (excludeSuffix) {
-        // Get filename without extension
-        const filenameWithoutExt = item.slice(0, item.lastIndexOf('.'));
-        
         // Handle multiple exclusion rules
         if (typeof excludeSuffix === 'object' && !Array.isArray(excludeSuffix)) {
           // Extract layer name from path (last part of the path)
@@ -109,20 +106,32 @@ const getElements = (path, excludeSuffix = null) => {
           
           // Check for specific layer rule first
           if (excludeSuffix[layerName]) {
-            return !filenameWithoutExt.endsWith(excludeSuffix[layerName]);
+            // Use regex pattern to match: suffix + # + number + .png
+            const suffix = excludeSuffix[layerName];
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return !pattern.test(item);
           }
           // Check for default rule
           else if (excludeSuffix["*"]) {
-            return !filenameWithoutExt.endsWith(excludeSuffix["*"]);
+            // Use regex pattern to match: suffix + # + number + .png
+            const suffix = excludeSuffix["*"];
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return !pattern.test(item);
           }
         }
         // If excludeSuffix is a string (backward compatibility)
         else if (typeof excludeSuffix === 'string') {
-          return !filenameWithoutExt.endsWith(excludeSuffix);
+          // Use regex pattern to match: suffix + # + number + .png
+          const pattern = new RegExp(`${excludeSuffix}#\\d+\\.png$`);
+          return !pattern.test(item);
         }
         // If excludeSuffix is an array of suffixes to exclude
         else if (Array.isArray(excludeSuffix)) {
-          return !excludeSuffix.some(suffix => filenameWithoutExt.endsWith(suffix));
+          return !excludeSuffix.some(suffix => {
+            // Use regex pattern to match: suffix + # + number + .png
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return pattern.test(item);
+          });
         }
       }
       return true;

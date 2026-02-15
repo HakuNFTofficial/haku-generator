@@ -26,7 +26,7 @@ const solanaMetadata = {
 const layerConfigurations = [
   // Female configuration
   {
-    growEditionSizeTo: 300,
+    growEditionSizeTo: 200,
     gender: "female",
     excludeSuffixes: {
       //"*": "_nohoodie",  // Apply to all layers by default
@@ -77,7 +77,7 @@ const layerConfigurations = [
   },
   // Male configuration
   {
-    growEditionSizeTo: 100,
+    growEditionSizeTo: 200,
     gender: "male",
     excludeSuffixes: {
       //"*": "_nohoodie",  // Apply to all layers by default 
