@@ -5,17 +5,17 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const network = NETWORK.eth;
 
 // General metadata for Ethereum
-const namePrefix = "Haku";
+const namePrefix = "Your Collection";
 const description = "Remember to replace this description";
-const baseUri = "ipfs://QmUdbbshUthth1hk2Nr1YD2GmwpNY61aFG3kShRs9fDJCJ";
+const baseUri = "ipfs://NewUriToReplace";
 
 const solanaMetadata = {
-  symbol: "Haku",
-  seller_fee_basis_points: 10000, // Define how much % you want from secondary market sales 1000 = 10%
-  external_url: "https://www.hakupump.club/",
+  symbol: "YC",
+  seller_fee_basis_points: 1000, // Define how much % you want from secondary market sales 1000 = 10%
+  external_url: "https://www.youtube.com/c/hashlipsnft",
   creators: [
     {
-      address: "0xd693a84a55fd1cba3e1b5d82571b4cfe1af14510",
+      address: "7fXNuer5sbZtaTEPhtJ5g5gNtuyRoKkvxdjEjEnPN4mC",
       share: 100,
     },
   ],
@@ -26,18 +26,17 @@ const solanaMetadata = {
 const layerConfigurations = [
   // Female configuration
   {
-    growEditionSizeTo: 200,
+    growEditionSizeTo: 20,
     gender: "female",
     excludeSuffixes: {
       //"*": "_nohoodie",  // Apply to all layers by default
-      // _nohoodie need exclude: close2 and close1
       // Different rules can be added for specific layers
       // "specificLayer": "_special"
     },
     layersOrder: [
-      { name: "background", opacity: 1.0, bypassDNA: true },
+      { name: "background", opacity: 1.0 },
       { name: "clothes2", opacity: 1.0 },
-      { name: "hoodie2", opacity: 1.0 },
+      //{ name: "hoodie2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
@@ -47,27 +46,12 @@ const layerConfigurations = [
       { name: "nose", opacity: 1.0 },
       { name: "glassesright", opacity: 1.0 },
       { name: "clothes1", opacity: 1.0 },
-      { name: "hoodie1", opacity: 1.0 },
       { name: "hair2", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
       //{ name: "hoodie1", opacity: 1.0 },
     ],
-    // Layer group configuration: define groups of layers that are related
-    layerGroups: {
-      clothes: ["clothes1", "clothes2"],
-      hoodies: ["hoodie1", "hoodie2"]
-    },
-    // Group exclusivity configuration: define which groups are mutually exclusive
-    exclusiveGroups: [
-      ["clothes", "hoodies"]
-    ],
-    // Group polling configuration: define the ratio for polling between groups
-    groupPolling: {
-      "clothes": 1,
-      "hoodies": 1
-    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 and hair3 are associated layers
@@ -81,9 +65,9 @@ const layerConfigurations = [
       clothes2: {
          clothes1: "sameName"
       },
-      hoodie2: {
-        hoodie1: "sameName"
-      },
+      // hoodie2: {
+      //   hoodie1: "sameName"
+      // },
       body: {
         nose: "sameName",
         ear: "sameName"
@@ -92,20 +76,18 @@ const layerConfigurations = [
   },
   // Male configuration
   {
-    growEditionSizeTo: 200,
+    growEditionSizeTo: 20,
     gender: "male",
     excludeSuffixes: {
-      //"*": "_nohoodie",  // Apply to all layers by default
-      // _nohoodie need exclude: close2 and close1
+     // "*": "_nohoodie",  // Apply to all layers by default
       // Different rules can be added for specific layers
       // "specificLayer": "_special"
     },
     layersOrder: [
-      { name: "background", opacity: 1.0, bypassDNA: true },
-      //{ name: "hoodie2", opacity: 1.0 },
+      { name: "background", opacity: 1.0 },
+     // { name: "hoodie2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
       { name: "clothes2", opacity: 1.0 },
-      { name: "hoodie2", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
       { name: "mouth", opacity: 1.0 },
@@ -116,24 +98,10 @@ const layerConfigurations = [
       { name: "glassesright", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
       { name: "clothes1", opacity: 1.0 },
-      { name: "hoodie1", opacity: 1.0 },
-      { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
+      { name: "gear", opacity: 1.0 },
+      //{ name: "hoodie1", opacity: 1.0 },
     ],
-    // Layer group configuration: define groups of layers that are related
-    layerGroups: {
-      clothes: ["clothes1", "clothes2"],
-      hoodies: ["hoodie1", "hoodie2"]
-    },
-    // Group exclusivity configuration: define which groups are mutually exclusive
-    exclusiveGroups: [
-      ["clothes", "hoodies"]
-    ],
-    // Group polling configuration: define the ratio for polling between groups
-    groupPolling: {
-      "clothes": 1,
-      "hoodies": 1
-    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 is the associated layer
@@ -145,11 +113,11 @@ const layerConfigurations = [
         glassesright: "sameName"
       },
       clothes2: {
-         clothes1: "sameName"
+        clothes1: "sameName"
       },
-      hoodie2: {
-        hoodie1: "sameName"
-      },
+      // hoodie2: {
+      //   hoodie1: "sameName"
+      // },
       body: {
         nose: "sameName",
         ear: "sameName"

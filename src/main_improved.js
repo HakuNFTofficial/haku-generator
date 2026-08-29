@@ -4,9 +4,26 @@ const { NETWORK } = require(`${basePath}/constants/network.js`);
 const path = require("path");
 const fs = require("fs");
 const sha1 = require(`${basePath}/node_modules/sha1`);
-const { createCanvas, loadImage } = require(`${basePath}/node_modules/canvas`);
+// Prefer node-canvas; if it fails to load due to native deps, fallback to skia-canvas
+let createCanvas, loadImage;
+try {
+  const canvasLib = require(`${basePath}/node_modules/canvas`);
+  createCanvas = canvasLib.createCanvas;
+  loadImage = canvasLib.loadImage;
+} catch (err) {
+  try {
+    const skia = require(`${basePath}/node_modules/skia-canvas`);
+    createCanvas = typeof skia.createCanvas === "function" ? skia.createCanvas : (w, h) => new skia.Canvas(w, h);
+    loadImage = skia.loadImage;
+    console.warn("node-canvas 加载失败，已回退到 skia-canvas");
+  } catch (fallbackErr) {
+    throw err; // 保持原始错误，提示用户修复 node-canvas
+  }
+}
 const buildDir = `${basePath}/build`;
 const layersDir = `${basePath}/layers`;
+// Allow overriding config via environment variable NFT_CONFIG
+const configPath = process.env.NFT_CONFIG || `${basePath}/src/config.js`;
 const {
   format,
   baseUri,
@@ -23,7 +40,7 @@ const {
   network,
   solanaMetadata,
   gif,
-} = require(`${basePath}/src/config.js`);
+} = require(configPath);
 const canvas = createCanvas(format.width, format.height);
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = format.smoothing;
@@ -36,6 +53,7 @@ const HashlipsGiffer = require(`${basePath}/modules/HashlipsGiffer.js`);
 let hashlipsGiffer = null;
 let globalEditionCounter = 1;
 let globalEditionCounterMeta = 1;
+let globalEditionCounterJSON = 1;
 
 // Necessary functions copied from the original main.js
 const buildSetup = () => {
@@ -73,13 +91,54 @@ const cleanName = (_str) => {
   return nameWithoutWeight;
 };
 
-const getElements = (path) => {
+const getElements = (path, excludeSuffix = null) => {
   return fs
     .readdirSync(path)
     .filter((item) => !/(^|\/)\.[^\/\.]/g.test(item))
+    // Filter out files with the specified suffix if provided
+    .filter((item) => {
+      if (excludeSuffix) {
+        // Handle multiple exclusion rules
+        if (typeof excludeSuffix === 'object' && !Array.isArray(excludeSuffix)) {
+          // Extract layer name from path (last part of the path)
+          const pathParts = path.split('/');
+          const layerName = pathParts[pathParts.length - 1];
+          
+          // Check for specific layer rule first
+          if (excludeSuffix[layerName]) {
+            // Use regex pattern to match: suffix + # + number + .png
+            const suffix = excludeSuffix[layerName];
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return !pattern.test(item);
+          }
+          // Check for default rule
+          else if (excludeSuffix["*"]) {
+            // Use regex pattern to match: suffix + # + number + .png
+            const suffix = excludeSuffix["*"];
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return !pattern.test(item);
+          }
+        }
+        // If excludeSuffix is a string (backward compatibility)
+        else if (typeof excludeSuffix === 'string') {
+          // Use regex pattern to match: suffix + # + number + .png
+          const pattern = new RegExp(`${excludeSuffix}#\\d+\\.png$`);
+          return !pattern.test(item);
+        }
+        // If excludeSuffix is an array of suffixes to exclude
+        else if (Array.isArray(excludeSuffix)) {
+          return !excludeSuffix.some(suffix => {
+            // Use regex pattern to match: suffix + # + number + .png
+            const pattern = new RegExp(`${suffix}#\\d+\\.png$`);
+            return pattern.test(item);
+          });
+        }
+      }
+      return true;
+    })
     .map((i, index) => {
       if (i.includes("-")) {
-        throw new Error(`Layer filename cannot contain hyphens (-), please modify filename: ${i}. It is recommended to replace hyphens (-) with underscores (_) or other characters.`);
+        throw new Error(`Layer filenames cannot contain hyphens (-), please modify the filename: ${i}. It is recommended to replace hyphens (-) with underscores (_) or other characters.`);
       }
       return {
         id: index,
@@ -91,7 +150,7 @@ const getElements = (path) => {
     });
 };
 
-const layersSetup = (layersOrder, gender) => {
+const layersSetup = (layersOrder, gender, excludeSuffix = null) => {
   const baseLayersPath = `${layersDir}`;
   
   // Determine layer folders to load based on gender
@@ -147,26 +206,35 @@ const layersSetup = (layersOrder, gender) => {
     });
   }
 
-  // Load layers and build configuration objects
+  // Load layers and build configuration object
   const layers = layerPaths.map((path, index) => {
     // If path is empty, return empty elements array
     if (path === "") {
       return { name: layersOrder[index].name, elements: [] };
     }
     
-    const elements = getElements(path);
+    const elements = getElements(path, excludeSuffix);
     return { name: layersOrder[index].name, elements };
   });
 
-  return layers;
+  // Filter out layers with no elements to avoid DNA sequence index mismatch
+  const filteredLayers = layers.filter(layer => {
+    if (!layer.elements || layer.elements.length === 0) {
+      console.log(`Filtering out layer "${layer.name}" - no elements found`);
+      return false;
+    }
+    return true;
+  });
+
+  return filteredLayers;
 };
 
 const saveImage = (_editionCount) => {
+  // Use the edition number as the image filename to ensure consistency
   fs.writeFileSync(
-    `${buildDir}/images/${globalEditionCounter}.png`,
+    `${buildDir}/images/${_editionCount}.png`,
     canvas.toBuffer("image/png")
   );
-  globalEditionCounter++;
 };
 
 const genColor = () => {
@@ -190,11 +258,11 @@ const addMetadata = (_dna, _edition, _gender) => {
   });
   
   let tempMetadata = {
-    name: `${namePrefix} #${globalEditionCounterMeta}`,
+    name: `${namePrefix} #${_edition}`,
     description: description,
-    image: `${baseUri}/${globalEditionCounterMeta}.png`,
+    image: `${baseUri}/${_edition}.png`,
     dna: sha1(_dna),
-    edition: globalEditionCounterMeta,
+    edition: _edition,
     date: dateTime,
     ...extraMetadata,
     attributes: attributesList,
@@ -203,11 +271,13 @@ const addMetadata = (_dna, _edition, _gender) => {
   
   metadataList.push(tempMetadata);
   attributesList = [];
-  globalEditionCounterMeta++;
 };
 
 const addAttributes = (_element) => {
   let selectedElement = _element.layer.selectedElement;
+  if (!selectedElement) {
+    return;
+  }
   attributesList.push({
     trait_type: _element.layer.name,
     value: selectedElement.name,
@@ -283,7 +353,7 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
           selectedElement: null,
         };
       }
-      
+
       let selectedElement = layer.elements.find(
         (e) => e.id == cleanDna(dnaSequence[index])
       );
@@ -338,113 +408,79 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
 // Helper function to select a group based on polling ratio
 const selectGroupByPolling = (groupPolling) => {
   if (!groupPolling || Object.keys(groupPolling).length === 0) {
-    return null;
+    throw new Error('[GROUP_POLLING_INVALID] No polling weights were provided');
   }
-  
+
   // Create an array of groups with their respective weights
   const groups = [];
-  Object.keys(groupPolling).forEach(groupName => {
-    const weight = groupPolling[groupName];
+  Object.entries(groupPolling).forEach(([groupName, weight]) => {
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0) {
+      throw new Error(`[GROUP_POLLING_INVALID] group=${groupName} weight=${String(weight)}`);
+    }
     if (weight > 0) {
       groups.push({ name: groupName, weight });
     }
   });
-  
+
   if (groups.length === 0) {
-    return null;
+    throw new Error(`[GROUP_POLLING_INVALID] No group has positive weight; groups=${Object.keys(groupPolling).join(',')}`);
   }
-  
+
   // Calculate total weight
   const totalWeight = groups.reduce((sum, group) => sum + group.weight, 0);
-  
+
   // Select a random group based on weight
-  let random = Math.floor(Math.random() * totalWeight);
+  let random = Math.random() * totalWeight;
   for (const group of groups) {
     random -= group.weight;
     if (random < 0) {
       return group.name;
     }
   }
-  
-  // Fallback to first group if something goes wrong
-  return groups[0].name;
-};
 
-// Helper function to get all layers in a group
-const getLayersInGroup = (groupName, layerGroups, layersOrder) => {
-  if (!layerGroups || !layerGroups[groupName]) {
-    return [];
-  }
-  
-  const groupLayerNames = layerGroups[groupName];
-  return layersOrder.filter(layer => groupLayerNames.includes(layer.name));
-};
-
-// Helper function to get all layers not in excluded groups
-const getLayersNotInExcludedGroups = (excludedGroups, layerGroups, layers) => {
-  if (!excludedGroups || excludedGroups.length === 0) {
-    return layers;
-  }
-  
-  // Get all layer names in excluded groups
-  const excludedLayerNames = new Set();
-  excludedGroups.forEach(groupName => {
-    if (layerGroups && layerGroups[groupName]) {
-      layerGroups[groupName].forEach(layerName => {
-        excludedLayerNames.add(layerName);
-      });
-    }
-  });
-  
-  // Filter out excluded layers
-  return layers.filter(layer => !excludedLayerNames.has(layer.name));
+  throw new Error(`[GROUP_SELECTION_FAILED] groups=${groups.map(({ name }) => name).join(',')} totalWeight=${totalWeight}`);
 };
 
 const createDna = (_layers, _layerConfig = null) => {
   let randNum = [];
-  
+
   // Get layer configuration
   const layerGroups = _layerConfig && _layerConfig.layerGroups || {};
   const exclusiveGroups = _layerConfig && _layerConfig.exclusiveGroups || [];
   const groupPolling = _layerConfig && _layerConfig.groupPolling || {};
-  const layersOrder = _layerConfig && _layerConfig.layersOrder || [];
-  
+
   // Process group selection
   const selectedGroups = new Set();
   const excludedGroups = new Set();
-  
+
   // Handle exclusive groups
   exclusiveGroups.forEach(groupSet => {
     // Select one group from each exclusive set based on polling ratio
     const availableGroups = groupSet.filter(group => !excludedGroups.has(group));
     if (availableGroups.length === 0) {
-      return;
+      throw new Error(`[GROUP_EXCLUSIVE_SET_EMPTY] groups=${groupSet.join(',')}`);
     }
-    
+
     // Create a subset of groupPolling for available groups
     const availablePolling = {};
     availableGroups.forEach(group => {
-      if (groupPolling[group] !== undefined) {
-        availablePolling[group] = groupPolling[group];
-      } else {
-        // Default to 1 if group not in polling config
-        availablePolling[group] = 1;
+      if (!Object.prototype.hasOwnProperty.call(groupPolling, group)) {
+        throw new Error(`[GROUP_POLLING_MISSING] exclusiveGroups=${groupSet.join(',')} missingGroup=${group}`);
+      }
+      availablePolling[group] = groupPolling[group];
+    });
+
+    const selectedGroup = selectGroupByPolling(availablePolling);
+    selectedGroups.add(selectedGroup);
+
+    // Exclude all other groups in this exclusive set
+    groupSet.forEach(group => {
+      if (group !== selectedGroup) {
+        excludedGroups.add(group);
       }
     });
-    
-    const selectedGroup = selectGroupByPolling(availablePolling);
-    if (selectedGroup) {
-      selectedGroups.add(selectedGroup);
-      
-      // Exclude all other groups in this exclusive set
-      groupSet.forEach(group => {
-        if (group !== selectedGroup) {
-          excludedGroups.add(group);
-        }
-      });
-    }
   });
-  
+
   // Add any non-exclusive groups that are in polling config
   Object.keys(groupPolling).forEach(group => {
     if (!excludedGroups.has(group) && !selectedGroups.has(group)) {
@@ -455,40 +491,34 @@ const createDna = (_layers, _layerConfig = null) => {
       }
     }
   });
-  
-  // Filter layers to exclude those in excluded groups
-  const filteredLayers = getLayersNotInExcludedGroups(Array.from(excludedGroups), layerGroups, _layers);
-  
-  // Process each filtered layer
-  filteredLayers.forEach((layer, index) => {
+
+  // Preserve one DNA position per actual layer so later name-to-index mappings stay aligned.
+  _layers.forEach((layer) => {
     const elements = layer.elements;
-    
+
     // Check if this layer is in any group
     let layerInGroup = false;
     let layerGroup = null;
-    
+
     Object.keys(layerGroups).forEach(groupName => {
       if (layerGroups[groupName].includes(layer.name)) {
         layerInGroup = true;
         layerGroup = groupName;
       }
     });
-    
-    // If layer is in a group, check if the group is selected
-    if (layerInGroup) {
-      if (!selectedGroups.has(layerGroup)) {
-        // Skip this layer if its group is not selected
-        randNum.push("none:none");
-        return;
-      }
+
+    // Keep an explicit placeholder for layers in groups that were not selected.
+    if (layerInGroup && !selectedGroups.has(layerGroup)) {
+      randNum.push("none:none");
+      return;
     }
-    
+
     // If layer is not skipped, select an element normally
     var totalWeight = 0;
     elements.forEach((element) => {
       totalWeight += element.weight;
     });
-    
+
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
     for (var i = 0; i < elements.length; i++) {
@@ -508,7 +538,8 @@ const createDna = (_layers, _layerConfig = null) => {
   let dnaStr = randNum.join(DNA_DELIMITER);
   if (_layerConfig && _layerConfig.layerAssociations) {
     try {
-      dnaStr = applyLayerAssociations(dnaStr, _layerConfig);
+      // Pass actual layers array to enable name-based mapping
+      dnaStr = applyLayerAssociations(dnaStr, _layerConfig, _layers);
     } catch (error) {
       console.error("Layer association processing failed:", error.message);
       throw error; // Re-throw exception to terminate NFT generation
@@ -529,11 +560,11 @@ const saveMetaDataSingleFile = (_editionCount) => {
         `Writing metadata for ${_editionCount}: ${JSON.stringify(metadata)}`
       )
     : null;
+  // Use the edition number as the JSON filename to ensure consistency
   fs.writeFileSync(
-    `${buildDir}/json/${globalEditionCounterJSON}.json`,
+    `${buildDir}/json/${_editionCount}.json`,
     JSON.stringify(metadata, null, 2)
   );
-  globalEditionCounterJSON++;
 };
 
 function shuffle(array) {
@@ -552,13 +583,14 @@ function shuffle(array) {
 
 // Function to apply layer association rules
 /**
- * Apply layer association rules (mandatory)
+ * Apply layer association rules using name-based mapping
  * @param {string} dnaStr - DNA string
  * @param {Object} layerConfig - Layer configuration
+ * @param {Array} actualLayers - Actual layers array (filtered)
  * @returns {string} Updated DNA string
  * @throws {Error} Throws an exception when matching elements are not found
  */
-const applyLayerAssociations = (dnaStr, layerConfig) => {
+const applyLayerAssociations = (dnaStr, layerConfig, actualLayers) => {
   // Check if layer association configuration exists
   if (!layerConfig.layerAssociations) {
     console.warn("Warning: Layer association configuration is missing");
@@ -568,77 +600,112 @@ const applyLayerAssociations = (dnaStr, layerConfig) => {
   // Split DNA string into an array
   let dnaSequence = dnaStr.split(DNA_DELIMITER);
   
+  // Build name-to-index mapping for actual layers
+  // This solves the index mismatch issue when layers are filtered
+  const layerNameToIndex = {};
+  actualLayers.forEach((layer, index) => {
+    layerNameToIndex[layer.name] = index;
+  });
+  
+  debugLogs && console.log(`Layer name mapping:`, layerNameToIndex);
+  
   // Get layer association configuration
   const associations = layerConfig.layerAssociations;
   
   // Iterate through each association rule
   Object.keys(associations).forEach(mainLayerName => {
-    // Find the index of the main layer in layersOrder
-    const mainLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === mainLayerName);
+    // Use name-based mapping instead of layersOrder index
+    const mainLayerIndex = layerNameToIndex[mainLayerName];
     
-    // Check if the main layer exists
-    if (mainLayerIndex === -1) {
-      throw new Error(`Fatal error: Main layer "${mainLayerName}" not found in layersOrder`);
+    // Check if the main layer exists in actual layers
+    if (mainLayerIndex === undefined) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_LAYER_MISSING] mainLayer=${mainLayerName}`);
     }
     
     // Check if the main layer element exists in the DNA sequence
     if (!dnaSequence[mainLayerIndex]) {
-      throw new Error(`Fatal error: Missing element for main layer "${mainLayerName}" in DNA sequence`);
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_DNA_MISSING] mainLayer=${mainLayerName} index=${mainLayerIndex}`);
     }
     
-    // Get the element name of the main layer (from DNA sequence)
-    const mainLayerElement = dnaSequence[mainLayerIndex].split(":")[0];
-    
+    // Get the element id and filename of the main layer (from DNA sequence)
+    const mainLayerParts = dnaSequence[mainLayerIndex].split(":");
+    const mainLayerElement = mainLayerParts[0]; // id
+    const mainLayerFilename = mainLayerParts[1]; // filename
+
     // Skip association if main layer is marked as "none" (skipped)
     if (mainLayerElement === "none") {
       console.log(`Skipping association for main layer "${mainLayerName}" because it's marked as none`);
       return;
     }
-    
-    console.log(`Element of main layer "${mainLayerName}": ${mainLayerElement}`);
+
+    if (mainLayerParts.length < 2) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_DNA_INVALID] mainLayer=${mainLayerName} dna=${dnaSequence[mainLayerIndex]}`);
+    }
+
+    const mainLayer = actualLayers[mainLayerIndex];
+    const sourceMatches = (mainLayer.elements || []).filter(
+      element => String(element.id) === mainLayerElement && element.filename === mainLayerFilename
+    );
+    if (sourceMatches.length === 0) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_MISSING] mainLayer=${mainLayerName} id=${mainLayerElement} filename=${mainLayerFilename}`);
+    }
+    if (sourceMatches.length > 1) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_AMBIGUOUS] mainLayer=${mainLayerName} id=${mainLayerElement} filename=${mainLayerFilename} matches=${sourceMatches.length}`);
+    }
+    const mainSelectedElement = sourceMatches[0];
+
+    console.log(`Element of main layer "${mainLayerName}": id=${mainLayerElement}, filename=${mainLayerFilename}`);
     
     // Iterate through all associated layers
     Object.keys(associations[mainLayerName]).forEach(associatedLayerName => {
       // Check if the association type is sameName
       if (associations[mainLayerName][associatedLayerName] === "sameName") {
-        // Find the index of the associated layer in layersOrder
-        const associatedLayerIndex = layerConfig.layersOrder.findIndex(layer => layer.name === associatedLayerName);
+        // Use name-based mapping for associated layer
+        const associatedLayerIndex = layerNameToIndex[associatedLayerName];
         
-        // Check if the associated layer exists
-        if (associatedLayerIndex === -1) {
-          throw new Error(`Fatal error: Associated layer "${associatedLayerName}" not found in layersOrder`);
+        // Check if the associated layer exists in actual layers
+        if (associatedLayerIndex === undefined) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_LAYER_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName}`);
         }
         
         // Check if the associated layer element exists in the DNA sequence
         if (!dnaSequence[associatedLayerIndex]) {
-          throw new Error(`Fatal error: Missing element for associated layer "${associatedLayerName}" in DNA sequence`);
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_DNA_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} index=${associatedLayerIndex}`);
         }
-        
+
+        const associatedLayerParts = dnaSequence[associatedLayerIndex].split(":");
+        const oldElementId = associatedLayerParts[0];
+        const oldElementFilename = associatedLayerParts[1];
+
         // Skip associated layer if it's marked as "none" (skipped)
-        const associatedLayerElement = dnaSequence[associatedLayerIndex].split(":")[0];
-        if (associatedLayerElement === "none") {
+        if (oldElementId === "none") {
           console.log(`Skipping associated layer "${associatedLayerName}" because it's marked as none`);
           return;
         }
-        
-        // Construct new DNA element string (element_name:layer_level)
-          const layerParts = dnaSequence[associatedLayerIndex].split(":");
-          if (layerParts.length >= 2) {
-            const layerLevel = layerParts[1];
-            const oldElementName = layerParts[0];
-            
-            // Check if the associated layer element has the same name as the main layer element
-            if (oldElementName !== mainLayerElement) {
-              console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" does not match element "${mainLayerElement}" of main layer "${mainLayerName}", updating...`);
-              dnaSequence[associatedLayerIndex] = `${mainLayerElement}:${layerLevel}`;
-              console.log(`Updated element of associated layer "${associatedLayerName}" to: ${mainLayerElement}`);
-            } else {
-              console.log(`Element "${oldElementName}" of associated layer "${associatedLayerName}" already matches element "${mainLayerElement}" of main layer "${mainLayerName}", no update needed`);
-            }
-          } else {
-            throw new Error(`Fatal error: Incorrect DNA format for associated layer "${associatedLayerName}"`);
-          }
+        if (associatedLayerParts.length < 2) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_DNA_INVALID] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} dna=${dnaSequence[associatedLayerIndex]}`);
         }
+
+        const associatedLayer = actualLayers[associatedLayerIndex];
+        const targetMatches = (associatedLayer.elements || []).filter(
+          element => element.name === mainSelectedElement.name
+        );
+        if (targetMatches.length === 0) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} element=${mainSelectedElement.name}`);
+        }
+        if (targetMatches.length > 1) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_AMBIGUOUS] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} element=${mainSelectedElement.name} matches=${targetMatches.length}`);
+        }
+
+        const targetElement = targetMatches[0];
+        if (oldElementId !== String(targetElement.id) || oldElementFilename !== targetElement.filename) {
+          console.log(`Updating associated layer "${associatedLayerName}": ${oldElementId}:${oldElementFilename} → ${targetElement.id}:${targetElement.filename}`);
+          dnaSequence[associatedLayerIndex] = `${targetElement.id}:${targetElement.filename}`;
+          console.log(`✓ Updated successfully`);
+        } else {
+          console.log(`Associated layer "${associatedLayerName}" already matches main layer "${mainLayerName}", no update needed`);
+        }
+      }
       });
     });
     
@@ -742,7 +809,7 @@ async function createNFTWithConcurrencyControl(
     
     saveImage(abstractedIndexes[0]);
     addMetadata(newDna, abstractedIndexes[0], gender);
-    saveMetaDataSingleFile(globalEditionCounterMeta - 1);
+    saveMetaDataSingleFile(abstractedIndexes[0]);
     
     console.log(
       `Created edition: ${abstractedIndexes[0]}, with DNA: ${sha1(newDna)}`
@@ -782,13 +849,36 @@ async function batchCreateNFTs(
     
     // Concurrently process images within the batch
     const batchPromises = batch.map(async (edition, index) => {
-      const result = await createNFTWithConcurrencyControl(
-        layers, 
-        layerConfig, 
-        editionCount + index, 
-        [edition],
-        gender
-      );
+      // Retry mechanism: try up to uniqueDnaTorrance times
+      let retryCount = 0;
+      let result = null;
+      
+      while (retryCount < uniqueDnaTorrance) {
+        result = await createNFTWithConcurrencyControl(
+          layers, 
+          layerConfig, 
+          editionCount + index, 
+          [edition],
+          gender
+        );
+        
+        // If successful, break out of retry loop
+        if (result.success) {
+          break;
+        }
+        
+        retryCount++;
+        
+        // Log retry attempts for DNA conflicts
+        if (result.reason === "DNA exists!" && retryCount < uniqueDnaTorrance) {
+          console.log(`Edition ${edition} - DNA conflict, retrying (${retryCount}/${uniqueDnaTorrance})...`);
+        }
+      }
+      
+      // If still failed after all retries
+      if (!result.success) {
+        console.error(`Edition ${edition} - Failed after ${retryCount} retries: ${result.reason}`);
+      }
       
       return result;
     });
@@ -821,10 +911,7 @@ async function batchCreateNFTs(
 const startCreatingWithConcurrencyControl = async () => {
   let layerConfigIndex = 0;
   let failedCount = 0;
-  
-  // Reset global counters
-  globalEditionCounterMeta = 1;
-  globalEditionCounterJSON = 1;
+  let editionOffset = 0; // Track cumulative edition offset
   
   // Clear metadataList and dnaList
   metadataList = [];
@@ -836,15 +923,18 @@ const startCreatingWithConcurrencyControl = async () => {
   }
   
   while (layerConfigIndex < layerConfigurations.length) {
-    // Generate independent abstractedIndexes array for each configuration
+    // Calculate the starting edition number for this configuration
+    const startEdition = editionOffset + (network == NETWORK.sol ? 0 : 1);
+    const endEdition = editionOffset + layerConfigurations[layerConfigIndex].growEditionSizeTo;
+    
+    // Generate edition indexes for this configuration
     let abstractedIndexes = [];
-    for (
-      let i = network == NETWORK.sol ? 0 : 1;
-      i <= layerConfigurations[layerConfigIndex].growEditionSizeTo;
-      i++
-    ) {
+    for (let i = startEdition; i <= endEdition; i++) {
       abstractedIndexes.push(i);
     }
+    
+    // Update offset for next configuration
+    editionOffset = endEdition;
     
     if (shuffleLayerConfigurations) {
       abstractedIndexes = shuffle(abstractedIndexes);
@@ -855,14 +945,14 @@ const startCreatingWithConcurrencyControl = async () => {
     
     // Load corresponding layer configuration based on gender
     const layers = layersSetup(
-      layerConfigurations[layerConfigIndex].layersOrder, gender
+      layerConfigurations[layerConfigIndex].layersOrder, gender, layerConfigurations[layerConfigIndex].excludeSuffixes || layerConfigurations[layerConfigIndex].excludeSuffix
     );
     
     debugLogs
       ? console.log("Editions left to create: ", abstractedIndexes)
       : null;
       
-    console.log(`Starting generation of ${layerConfigurations[layerConfigIndex].growEditionSizeTo} ${gender} NFT images`);
+    console.log(`Starting generation of ${layerConfigurations[layerConfigIndex].growEditionSizeTo} ${gender} NFT images (editions ${startEdition}-${endEdition})`);
     
     // Use batch processing function
     const result = await batchCreateNFTs(
@@ -887,5 +977,6 @@ module.exports = {
   buildSetup,
   checkMemoryUsage,
   createDna,
-  applyLayerAssociations
+  applyLayerAssociations,
+  getElements
 };
