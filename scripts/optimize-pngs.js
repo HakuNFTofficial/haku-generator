@@ -5,7 +5,7 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { loadImage } = require("canvas");
 
-const BATCH_SIZE = 128;
+const BATCH_SIZE = 8;
 
 class OptimizationError extends Error {
   constructor(code, message, details = {}) {

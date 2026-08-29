@@ -264,10 +264,10 @@ test("optimization is safe to rerun", async (t) => {
   assert.deepEqual(await snapshotImages(imagesDir), beforeSnapshot);
 });
 
-test("large collections are split into bounded OxiPNG batches", async (t) => {
+test("large collections use memory-conscious OxiPNG batches", async (t) => {
   const imagesDir = makeFixtureDirectory(t);
   const source = path.join(imagesDir, "1.png");
-  for (let edition = 3; edition <= 129; edition += 1) {
+  for (let edition = 3; edition <= 17; edition += 1) {
     fs.copyFileSync(source, path.join(imagesDir, `${edition}.png`));
   }
   const calls = [];
@@ -285,14 +285,14 @@ test("large collections are split into bounded OxiPNG batches", async (t) => {
   });
 
   const optimizeCalls = calls.slice(1);
-  assert.equal(optimizeCalls.length, 2);
+  assert.equal(optimizeCalls.length, 3);
   assert.equal(
-    optimizeCalls.every((args) => args.slice(4).length <= 128),
+    optimizeCalls.every((args) => args.slice(4).length <= 8),
     true
   );
   assert.equal(
     optimizeCalls.reduce((count, args) => count + args.slice(4).length, 0),
-    129
+    17
   );
 });
 

@@ -40,7 +40,7 @@ npm run generate:optimized
 `npm run optimize` 会：
 
 1. 只处理项目根目录下 `build/images` 中的 PNG 文件；
-2. 使用 `oxipng -o 4 --strip safe`；
+2. 使用 `oxipng -o 4 --strip safe`，并按最多 8 张一批处理以限制大尺寸图片的峰值内存；
 3. 检查优化前后的文件名、数量和 PNG 可读性；
 4. 输出一行 JSON，包含图片数、优化前后字节数、节省比例、耗时和 OxiPNG 版本。
 
