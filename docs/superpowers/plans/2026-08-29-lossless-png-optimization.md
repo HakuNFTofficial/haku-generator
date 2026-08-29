@@ -310,7 +310,7 @@ test("package scripts preserve generation and add ordered optimization", () => {
   assert.equal(packageJson.scripts.generate, "node index.js");
   assert.equal(packageJson.scripts.optimize, "node scripts/optimize-pngs.js");
   assert.equal(packageJson.scripts["generate:optimized"], "npm run generate && npm run optimize");
-  assert.equal(packageJson.scripts.test, "node --test test");
+  assert.equal(packageJson.scripts.test, "node --test test/*.test.js");
 });
 ```
 
@@ -350,7 +350,7 @@ if (require.main === module) {
 Modify `package.json` scripts to include:
 
 ```json
-"test": "node --test test",
+"test": "node --test test/*.test.js",
 "optimize": "node scripts/optimize-pngs.js",
 "generate:optimized": "npm run generate && npm run optimize"
 ```

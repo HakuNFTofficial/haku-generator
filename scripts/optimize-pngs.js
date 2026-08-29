@@ -197,7 +197,38 @@ async function runOptimization({
   };
 }
 
+async function runCli({
+  imagesDir = path.resolve(__dirname, "..", "build", "images"),
+  runOptimizationFn = runOptimization,
+  stdout = process.stdout,
+  stderr = process.stderr,
+} = {}) {
+  try {
+    const summary = await runOptimizationFn({ imagesDir });
+    stdout.write(`${JSON.stringify(summary)}\n`);
+    return 0;
+  } catch (error) {
+    const structuredError =
+      error instanceof OptimizationError
+        ? error.toJSON()
+        : {
+            code: "UNEXPECTED_ERROR",
+            message: error?.message || String(error),
+            imagesDir,
+          };
+    stderr.write(`${JSON.stringify(structuredError)}\n`);
+    return 1;
+  }
+}
+
+if (require.main === module) {
+  runCli().then((exitCode) => {
+    process.exitCode = exitCode;
+  });
+}
+
 module.exports = {
   OptimizationError,
+  runCli,
   runOptimization,
 };

@@ -12,9 +12,12 @@
     ]
   },
   "scripts": {
+    "test": "node --test test/*.test.js",
     "nft": "node index.js",
     "build": "node index.js",
     "generate": "node index.js",
+    "optimize": "node scripts/optimize-pngs.js",
+    "generate:optimized": "npm run generate && npm run optimize",
     "rarity": "node utils/rarity.js",
     "preview": "node utils/preview.js",
     "pixelate": "node utils/pixelate.js",

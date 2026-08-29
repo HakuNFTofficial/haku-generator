@@ -8,6 +8,7 @@ const { createCanvas, loadImage } = require("canvas");
 
 const {
   OptimizationError,
+  runCli,
   runOptimization,
 } = require("../scripts/optimize-pngs");
 
@@ -240,4 +241,76 @@ test("optimization is safe to rerun", async (t) => {
   await runOptimization({ imagesDir, spawnSyncFn });
 
   assert.deepEqual(await snapshotImages(imagesDir), beforeSnapshot);
+});
+
+test("package scripts preserve generation and add ordered optimization", () => {
+  const packageJson = require("../package.json");
+
+  assert.equal(packageJson.scripts.generate, "node index.js");
+  assert.equal(
+    packageJson.scripts.optimize,
+    "node scripts/optimize-pngs.js"
+  );
+  assert.equal(
+    packageJson.scripts["generate:optimized"],
+    "npm run generate && npm run optimize"
+  );
+  assert.equal(packageJson.scripts.test, "node --test test/*.test.js");
+});
+
+test("CLI writes a successful summary as one JSON record", async () => {
+  const imagesDir = "/repo/build/images";
+  const summary = {
+    status: "ok",
+    imagesDir,
+    imageCount: 2,
+  };
+  const stdoutWrites = [];
+  const stderrWrites = [];
+
+  const exitCode = await runCli({
+    imagesDir,
+    runOptimizationFn: async (options) => {
+      assert.equal(options.imagesDir, imagesDir);
+      return summary;
+    },
+    stdout: { write: (value) => stdoutWrites.push(value) },
+    stderr: { write: (value) => stderrWrites.push(value) },
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(stdoutWrites, [`${JSON.stringify(summary)}\n`]);
+  assert.deepEqual(stderrWrites, []);
+});
+
+test("CLI writes a structured failure as one JSON record", async () => {
+  const imagesDir = "/repo/build/images";
+  const stdoutWrites = [];
+  const stderrWrites = [];
+
+  const exitCode = await runCli({
+    imagesDir,
+    runOptimizationFn: async () => {
+      throw new OptimizationError(
+        "OXIPNG_NOT_FOUND",
+        "OxiPNG is not installed or is not on PATH",
+        {
+          imagesDir,
+          missingFields: ["oxipng executable"],
+        }
+      );
+    },
+    stdout: { write: (value) => stdoutWrites.push(value) },
+    stderr: { write: (value) => stderrWrites.push(value) },
+  });
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(stdoutWrites, []);
+  assert.deepEqual(JSON.parse(stderrWrites[0]), {
+    code: "OXIPNG_NOT_FOUND",
+    message: "OxiPNG is not installed or is not on PATH",
+    imagesDir,
+    missingFields: ["oxipng executable"],
+  });
+  assert.equal(stderrWrites.length, 1);
 });
