@@ -3,6 +3,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { loadImage } = require("canvas");
+
+const BATCH_SIZE = 128;
 
 class OptimizationError extends Error {
   constructor(code, message, details = {}) {
@@ -78,12 +81,62 @@ function runChild(spawnSyncFn, binary, args, imagesDir) {
   return result;
 }
 
+function sumBytes(files) {
+  return files.reduce((total, file) => total + fs.statSync(file).size, 0);
+}
+
+function chunk(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function validatePngFiles(
+  files,
+  imagesDir,
+  loadImageFn = loadImage
+) {
+  const invalidFiles = [];
+
+  for (const file of files) {
+    try {
+      const image = await loadImageFn(file);
+      if (!image.width || !image.height) {
+        invalidFiles.push(path.basename(file));
+      }
+    } catch {
+      invalidFiles.push(path.basename(file));
+    }
+  }
+
+  if (invalidFiles.length > 0) {
+    throw new OptimizationError(
+      "OUTPUT_INVALID_PNG",
+      "One or more PNG outputs are unreadable",
+      {
+        imagesDir,
+        failedFiles: invalidFiles,
+      }
+    );
+  }
+}
+
 async function runOptimization({
   imagesDir,
   oxipngBin = "oxipng",
   spawnSyncFn = spawnSync,
+  loadImageFn = loadImage,
+  nowFn = Date.now,
 }) {
   const files = listPngFiles(imagesDir);
+  const originalNames = files.map((file) => path.basename(file));
+  const beforeBytes = sumBytes(files);
+  const startedAt = nowFn();
+
+  await validatePngFiles(files, imagesDir, loadImageFn);
+
   const versionResult = runChild(
     spawnSyncFn,
     oxipngBin,
@@ -91,17 +144,56 @@ async function runOptimization({
     imagesDir
   );
 
-  runChild(
-    spawnSyncFn,
-    oxipngBin,
-    ["-o", "4", "--strip", "safe", ...files],
-    imagesDir
-  );
+  for (const batch of chunk(files, BATCH_SIZE)) {
+    runChild(
+      spawnSyncFn,
+      oxipngBin,
+      ["-o", "4", "--strip", "safe", ...batch],
+      imagesDir
+    );
+  }
+
+  const outputFiles = listPngFiles(imagesDir);
+  const outputNames = outputFiles.map((file) => path.basename(file));
+  const failedFiles = originalNames
+    .filter((name) => !outputNames.includes(name))
+    .concat(outputNames.filter((name) => !originalNames.includes(name)));
+
+  if (
+    outputFiles.length !== files.length ||
+    failedFiles.length > 0
+  ) {
+    throw new OptimizationError(
+      "OUTPUT_COUNT_MISMATCH",
+      "PNG output names or count changed during optimization",
+      {
+        imagesDir,
+        expectedCount: files.length,
+        actualCount: outputFiles.length,
+        failedFiles,
+      }
+    );
+  }
+
+  await validatePngFiles(outputFiles, imagesDir, loadImageFn);
+
+  const afterBytes = sumBytes(outputFiles);
+  const savedBytes = beforeBytes - afterBytes;
+  const savedPercent =
+    beforeBytes === 0
+      ? 0
+      : Number(((savedBytes / beforeBytes) * 100).toFixed(2));
 
   return {
     status: "ok",
     imagesDir,
     oxipngVersion: String(versionResult.stdout || "").trim(),
+    imageCount: outputFiles.length,
+    beforeBytes,
+    afterBytes,
+    savedBytes,
+    savedPercent,
+    durationMs: nowFn() - startedAt,
   };
 }
 
