@@ -123,6 +123,27 @@ test("missing OxiPNG fails without a fallback", async (t) => {
   );
 });
 
+test("OxiPNG availability is checked before decoding the collection", async (t) => {
+  const imagesDir = makeFixtureDirectory(t);
+  let decodeCalls = 0;
+  const spawnSyncFn = () => ({
+    error: Object.assign(new Error("spawn oxipng ENOENT"), { code: "ENOENT" }),
+  });
+
+  await assert.rejects(
+    runOptimization({
+      imagesDir,
+      spawnSyncFn,
+      loadImageFn: async () => {
+        decodeCalls += 1;
+        return { width: 1, height: 1 };
+      },
+    }),
+    (error) => error.code === "OXIPNG_NOT_FOUND"
+  );
+  assert.equal(decodeCalls, 0);
+});
+
 test("OxiPNG process failures include exit details", async (t) => {
   const imagesDir = makeFixtureDirectory(t);
   const spawnSyncFn = makeSpawnSequence([
@@ -241,6 +262,38 @@ test("optimization is safe to rerun", async (t) => {
   await runOptimization({ imagesDir, spawnSyncFn });
 
   assert.deepEqual(await snapshotImages(imagesDir), beforeSnapshot);
+});
+
+test("large collections are split into bounded OxiPNG batches", async (t) => {
+  const imagesDir = makeFixtureDirectory(t);
+  const source = path.join(imagesDir, "1.png");
+  for (let edition = 3; edition <= 129; edition += 1) {
+    fs.copyFileSync(source, path.join(imagesDir, `${edition}.png`));
+  }
+  const calls = [];
+  const spawnSyncFn = (_binary, args) => {
+    calls.push(args);
+    return args[0] === "--version"
+      ? { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" }
+      : { status: 0, stdout: "", stderr: "" };
+  };
+
+  await runOptimization({
+    imagesDir,
+    spawnSyncFn,
+    loadImageFn: async () => ({ width: 1, height: 1 }),
+  });
+
+  const optimizeCalls = calls.slice(1);
+  assert.equal(optimizeCalls.length, 2);
+  assert.equal(
+    optimizeCalls.every((args) => args.slice(4).length <= 128),
+    true
+  );
+  assert.equal(
+    optimizeCalls.reduce((count, args) => count + args.slice(4).length, 0),
+    129
+  );
 });
 
 test("package scripts preserve generation and add ordered optimization", () => {

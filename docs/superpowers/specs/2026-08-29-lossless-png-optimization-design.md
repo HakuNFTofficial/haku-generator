@@ -1,6 +1,6 @@
 # Lossless PNG Optimization Design
 
-Date: 2026-08-29  
+Date: 2026-08-29
 Status: Approved for planning
 
 ## Objective

@@ -135,8 +135,6 @@ async function runOptimization({
   const beforeBytes = sumBytes(files);
   const startedAt = nowFn();
 
-  await validatePngFiles(files, imagesDir, loadImageFn);
-
   const versionResult = runChild(
     spawnSyncFn,
     oxipngBin,
