@@ -19,6 +19,8 @@ The installed `canvas` implementation already defaults to ZLIB compression level
 
 A representative competitor PNG measured 2,900 by 2,900 pixels, 8-bit RGBA, and 795,485 bytes. A separate lossless recompression produced a 784,286-byte file with zero decoded pixel differences, an additional reduction of about 1.4%. Collection-specific results must be measured from generated samples rather than inferred from dimensions alone.
 
+After implementation, an end-to-end run with OxiPNG 10.2.0 reduced that same sample from 795,485 to 695,417 bytes (12.58%) while preserving its decoded RGBA SHA-256 exactly.
+
 ## User Workflow
 
 Keep the existing command unchanged:
