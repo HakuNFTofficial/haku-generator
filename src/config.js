@@ -26,17 +26,17 @@ const solanaMetadata = {
 const layerConfigurations = [
   // Female configuration
   {
-    growEditionSizeTo: 200,
+    growEditionSizeTo: 150,
     gender: "female",
     excludeSuffixes: {
-      //"*": "_nohoodie",  // Apply to all layers by default
+      "*": "_nohoodie",  // Apply to all layers by default
       // _nohoodie need exclude: close2 and close1
       // Different rules can be added for specific layers
       // "specificLayer": "_special"
     },
     layersOrder: [
       { name: "background", opacity: 1.0, bypassDNA: true },
-      { name: "clothes2", opacity: 1.0 },
+      //{ name: "clothes2", opacity: 1.0 },
       { name: "hoodie2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
@@ -46,28 +46,13 @@ const layerConfigurations = [
       { name: "glassesleft", opacity: 1.0 },
       { name: "nose", opacity: 1.0 },
       { name: "glassesright", opacity: 1.0 },
-      { name: "clothes1", opacity: 1.0 },
+      //{ name: "clothes1", opacity: 1.0 },
       { name: "hoodie1", opacity: 1.0 },
       { name: "hair2", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
-      //{ name: "hoodie1", opacity: 1.0 },
     ],
-    // Layer group configuration: define groups of layers that are related
-    layerGroups: {
-      clothes: ["clothes1", "clothes2"],
-      hoodies: ["hoodie1", "hoodie2"]
-    },
-    // Group exclusivity configuration: define which groups are mutually exclusive
-    exclusiveGroups: [
-      ["clothes", "hoodies"]
-    ],
-    // Group polling configuration: define the ratio for polling between groups
-    groupPolling: {
-      "clothes": 1,
-      "hoodies": 1
-    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 and hair3 are associated layers
@@ -78,9 +63,9 @@ const layerConfigurations = [
       glassesleft: {
         glassesright: "sameName"
       },
-      clothes2: {
-         clothes1: "sameName"
-      },
+      // clothes2: {
+      //    clothes1: "sameName"
+      // },
       hoodie2: {
         hoodie1: "sameName"
       },
@@ -92,19 +77,18 @@ const layerConfigurations = [
   },
   // Male configuration
   {
-    growEditionSizeTo: 200,
+    growEditionSizeTo: 250,
     gender: "male",
     excludeSuffixes: {
-      //"*": "_nohoodie",  // Apply to all layers by default
+      "*": "_nohoodie",  // Apply to all layers by default
       // _nohoodie need exclude: close2 and close1
       // Different rules can be added for specific layers
       // "specificLayer": "_special"
     },
     layersOrder: [
       { name: "background", opacity: 1.0, bypassDNA: true },
-      //{ name: "hoodie2", opacity: 1.0 },
       { name: "hair3", opacity: 1.0 },
-      { name: "clothes2", opacity: 1.0 },
+      //{ name: "clothes2", opacity: 1.0 },
       { name: "hoodie2", opacity: 1.0 },
       { name: "body", opacity: 1.0 },
       { name: "tattoo", opacity: 1.0 },
@@ -115,25 +99,11 @@ const layerConfigurations = [
       { name: "hair2", opacity: 1.0 },
       { name: "glassesright", opacity: 1.0 },
       { name: "ear", opacity: 1.0 },
-      { name: "clothes1", opacity: 1.0 },
+      //{ name: "clothes1", opacity: 1.0 },
       { name: "hoodie1", opacity: 1.0 },
       { name: "gear", opacity: 1.0 },
       { name: "hair1", opacity: 1.0 },
     ],
-    // Layer group configuration: define groups of layers that are related
-    layerGroups: {
-      clothes: ["clothes1", "clothes2"],
-      hoodies: ["hoodie1", "hoodie2"]
-    },
-    // Group exclusivity configuration: define which groups are mutually exclusive
-    exclusiveGroups: [
-      ["clothes", "hoodies"]
-    ],
-    // Group polling configuration: define the ratio for polling between groups
-    groupPolling: {
-      "clothes": 1,
-      "hoodies": 1
-    },
     // Layer association configuration: specify that certain layers must appear together and select images with the same name
     layerAssociations: {
       // hair1 is the main layer, hair2 is the associated layer
@@ -144,9 +114,9 @@ const layerConfigurations = [
       glassesleft: {
         glassesright: "sameName"
       },
-      clothes2: {
-         clothes1: "sameName"
-      },
+      // clothes2: {
+      //    clothes1: "sameName"
+      // },
       hoodie2: {
         hoodie1: "sameName"
       },
