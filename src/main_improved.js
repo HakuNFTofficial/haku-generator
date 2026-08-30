@@ -275,6 +275,9 @@ const addMetadata = (_dna, _edition, _gender) => {
 
 const addAttributes = (_element) => {
   let selectedElement = _element.layer.selectedElement;
+  if (!selectedElement) {
+    return;
+  }
   attributesList.push({
     trait_type: _element.layer.name,
     value: selectedElement.name,
@@ -341,6 +344,16 @@ const constructLayerToDna = (_dna = "", _layers = []) => {
   let mappedDnaToLayers = _layers.map((layer, index) => {
     // Check if an element exists at this index in the DNA sequence
     if (dnaSequence[index]) {
+      // Check if this layer is marked as "none" (should be skipped)
+      if (dnaSequence[index] === "none:none") {
+        return {
+          name: layer.name,
+          blend: layer.blend,
+          opacity: layer.opacity,
+          selectedElement: null,
+        };
+      }
+
       let selectedElement = layer.elements.find(
         (e) => e.id == cleanDna(dnaSequence[index])
       );
@@ -392,16 +405,120 @@ const isDnaUnique = (_DnaList = new Set(), _dna = "") => {
   return !_DnaList.has(_filteredDNA);
 };
 
+// Helper function to select a group based on polling ratio
+const selectGroupByPolling = (groupPolling) => {
+  if (!groupPolling || Object.keys(groupPolling).length === 0) {
+    throw new Error('[GROUP_POLLING_INVALID] No polling weights were provided');
+  }
+
+  // Create an array of groups with their respective weights
+  const groups = [];
+  Object.entries(groupPolling).forEach(([groupName, weight]) => {
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0) {
+      throw new Error(`[GROUP_POLLING_INVALID] group=${groupName} weight=${String(weight)}`);
+    }
+    if (weight > 0) {
+      groups.push({ name: groupName, weight });
+    }
+  });
+
+  if (groups.length === 0) {
+    throw new Error(`[GROUP_POLLING_INVALID] No group has positive weight; groups=${Object.keys(groupPolling).join(',')}`);
+  }
+
+  // Calculate total weight
+  const totalWeight = groups.reduce((sum, group) => sum + group.weight, 0);
+
+  // Select a random group based on weight
+  let random = Math.random() * totalWeight;
+  for (const group of groups) {
+    random -= group.weight;
+    if (random < 0) {
+      return group.name;
+    }
+  }
+
+  throw new Error(`[GROUP_SELECTION_FAILED] groups=${groups.map(({ name }) => name).join(',')} totalWeight=${totalWeight}`);
+};
+
 const createDna = (_layers, _layerConfig = null) => {
   let randNum = [];
+
+  // Get layer configuration
+  const layerGroups = _layerConfig && _layerConfig.layerGroups || {};
+  const exclusiveGroups = _layerConfig && _layerConfig.exclusiveGroups || [];
+  const groupPolling = _layerConfig && _layerConfig.groupPolling || {};
+
+  // Process group selection
+  const selectedGroups = new Set();
+  const excludedGroups = new Set();
+
+  // Handle exclusive groups
+  exclusiveGroups.forEach(groupSet => {
+    // Select one group from each exclusive set based on polling ratio
+    const availableGroups = groupSet.filter(group => !excludedGroups.has(group));
+    if (availableGroups.length === 0) {
+      throw new Error(`[GROUP_EXCLUSIVE_SET_EMPTY] groups=${groupSet.join(',')}`);
+    }
+
+    // Create a subset of groupPolling for available groups
+    const availablePolling = {};
+    availableGroups.forEach(group => {
+      if (!Object.prototype.hasOwnProperty.call(groupPolling, group)) {
+        throw new Error(`[GROUP_POLLING_MISSING] exclusiveGroups=${groupSet.join(',')} missingGroup=${group}`);
+      }
+      availablePolling[group] = groupPolling[group];
+    });
+
+    const selectedGroup = selectGroupByPolling(availablePolling);
+    selectedGroups.add(selectedGroup);
+
+    // Exclude all other groups in this exclusive set
+    groupSet.forEach(group => {
+      if (group !== selectedGroup) {
+        excludedGroups.add(group);
+      }
+    });
+  });
+
+  // Add any non-exclusive groups that are in polling config
+  Object.keys(groupPolling).forEach(group => {
+    if (!excludedGroups.has(group) && !selectedGroups.has(group)) {
+      // Check if this group is part of any exclusive set
+      const isExclusive = exclusiveGroups.some(groupSet => groupSet.includes(group));
+      if (!isExclusive) {
+        selectedGroups.add(group);
+      }
+    }
+  });
+
+  // Preserve one DNA position per actual layer so later name-to-index mappings stay aligned.
   _layers.forEach((layer) => {
     const elements = layer.elements;
-    
-    // Note: Empty layers are already filtered out in layersSetup
+
+    // Check if this layer is in any group
+    let layerInGroup = false;
+    let layerGroup = null;
+
+    Object.keys(layerGroups).forEach(groupName => {
+      if (layerGroups[groupName].includes(layer.name)) {
+        layerInGroup = true;
+        layerGroup = groupName;
+      }
+    });
+
+    // Keep an explicit placeholder for layers in groups that were not selected.
+    if (layerInGroup && !selectedGroups.has(layerGroup)) {
+      randNum.push("none:none");
+      return;
+    }
+
+    // If layer is not skipped, select an element normally
     var totalWeight = 0;
     elements.forEach((element) => {
       totalWeight += element.weight;
     });
+
     // number between 0 - totalWeight
     let random = Math.floor(Math.random() * totalWeight);
     for (var i = 0; i < elements.length; i++) {
@@ -502,20 +619,41 @@ const applyLayerAssociations = (dnaStr, layerConfig, actualLayers) => {
     
     // Check if the main layer exists in actual layers
     if (mainLayerIndex === undefined) {
-      console.log(`Main layer "${mainLayerName}" not found in actual layers (may be filtered out), skipping association`);
-      return;
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_LAYER_MISSING] mainLayer=${mainLayerName}`);
     }
     
     // Check if the main layer element exists in the DNA sequence
     if (!dnaSequence[mainLayerIndex]) {
-      console.log(`Main layer "${mainLayerName}" has no element in DNA sequence, skipping association`);
-      return;
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_DNA_MISSING] mainLayer=${mainLayerName} index=${mainLayerIndex}`);
     }
     
     // Get the element id and filename of the main layer (from DNA sequence)
     const mainLayerParts = dnaSequence[mainLayerIndex].split(":");
     const mainLayerElement = mainLayerParts[0]; // id
     const mainLayerFilename = mainLayerParts[1]; // filename
+
+    // Skip association if main layer is marked as "none" (skipped)
+    if (mainLayerElement === "none") {
+      console.log(`Skipping association for main layer "${mainLayerName}" because it's marked as none`);
+      return;
+    }
+
+    if (mainLayerParts.length < 2) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_DNA_INVALID] mainLayer=${mainLayerName} dna=${dnaSequence[mainLayerIndex]}`);
+    }
+
+    const mainLayer = actualLayers[mainLayerIndex];
+    const sourceMatches = (mainLayer.elements || []).filter(
+      element => String(element.id) === mainLayerElement && element.filename === mainLayerFilename
+    );
+    if (sourceMatches.length === 0) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_MISSING] mainLayer=${mainLayerName} id=${mainLayerElement} filename=${mainLayerFilename}`);
+    }
+    if (sourceMatches.length > 1) {
+      throw new Error(`[LAYER_ASSOCIATION_SOURCE_AMBIGUOUS] mainLayer=${mainLayerName} id=${mainLayerElement} filename=${mainLayerFilename} matches=${sourceMatches.length}`);
+    }
+    const mainSelectedElement = sourceMatches[0];
+
     console.log(`Element of main layer "${mainLayerName}": id=${mainLayerElement}, filename=${mainLayerFilename}`);
     
     // Iterate through all associated layers
@@ -527,37 +665,47 @@ const applyLayerAssociations = (dnaStr, layerConfig, actualLayers) => {
         
         // Check if the associated layer exists in actual layers
         if (associatedLayerIndex === undefined) {
-          console.log(`Associated layer "${associatedLayerName}" not found in actual layers (may be filtered out), skipping`);
-          return;
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_LAYER_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName}`);
         }
         
         // Check if the associated layer element exists in the DNA sequence
         if (!dnaSequence[associatedLayerIndex]) {
-          console.log(`Associated layer "${associatedLayerName}" has no element in DNA sequence, skipping`);
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_DNA_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} index=${associatedLayerIndex}`);
+        }
+
+        const associatedLayerParts = dnaSequence[associatedLayerIndex].split(":");
+        const oldElementId = associatedLayerParts[0];
+        const oldElementFilename = associatedLayerParts[1];
+
+        // Skip associated layer if it's marked as "none" (skipped)
+        if (oldElementId === "none") {
+          console.log(`Skipping associated layer "${associatedLayerName}" because it's marked as none`);
           return;
         }
-        
-        // Construct new DNA element string using BOTH id and filename from main layer
-          const associatedLayerParts = dnaSequence[associatedLayerIndex].split(":");
-          if (associatedLayerParts.length >= 2) {
-            const oldElementId = associatedLayerParts[0];
-            const oldElementFilename = associatedLayerParts[1];
-            
-            // Check if the associated layer element matches the main layer element
-            // For sameName association, both id and filename should match
-            if (oldElementId !== mainLayerElement || oldElementFilename !== mainLayerFilename) {
-              console.log(`Updating associated layer "${associatedLayerName}": ${oldElementId}:${oldElementFilename} → ${mainLayerElement}:${mainLayerFilename}`);
-              // Use BOTH id and filename from main layer
-              dnaSequence[associatedLayerIndex] = `${mainLayerElement}:${mainLayerFilename}`;
-              console.log(`✓ Updated successfully`);
-            } else {
-              console.log(`Associated layer "${associatedLayerName}" already matches main layer "${mainLayerName}", no update needed`);
-            }
-          } else {
-            console.warn(`Warning: Incorrect DNA format for associated layer "${associatedLayerName}", skipping`);
-            return;
-          }
+        if (associatedLayerParts.length < 2) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_DNA_INVALID] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} dna=${dnaSequence[associatedLayerIndex]}`);
         }
+
+        const associatedLayer = actualLayers[associatedLayerIndex];
+        const targetMatches = (associatedLayer.elements || []).filter(
+          element => element.name === mainSelectedElement.name
+        );
+        if (targetMatches.length === 0) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_MISSING] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} element=${mainSelectedElement.name}`);
+        }
+        if (targetMatches.length > 1) {
+          throw new Error(`[LAYER_ASSOCIATION_TARGET_AMBIGUOUS] mainLayer=${mainLayerName} associatedLayer=${associatedLayerName} element=${mainSelectedElement.name} matches=${targetMatches.length}`);
+        }
+
+        const targetElement = targetMatches[0];
+        if (oldElementId !== String(targetElement.id) || oldElementFilename !== targetElement.filename) {
+          console.log(`Updating associated layer "${associatedLayerName}": ${oldElementId}:${oldElementFilename} → ${targetElement.id}:${targetElement.filename}`);
+          dnaSequence[associatedLayerIndex] = `${targetElement.id}:${targetElement.filename}`;
+          console.log(`✓ Updated successfully`);
+        } else {
+          console.log(`Associated layer "${associatedLayerName}" already matches main layer "${mainLayerName}", no update needed`);
+        }
+      }
       });
     });
     
@@ -828,5 +976,7 @@ module.exports = {
   startCreatingWithConcurrencyControl,
   buildSetup,
   checkMemoryUsage,
+  createDna,
+  applyLayerAssociations,
   getElements
 };
