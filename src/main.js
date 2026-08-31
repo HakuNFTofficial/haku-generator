@@ -42,7 +42,7 @@ let cacheMisses = 0;
 
 const buildSetup = () => {
   if (fs.existsSync(buildDir)) {
-    fs.rmdirSync(buildDir, { recursive: true });
+    fs.rmSync(buildDir, { recursive: true, force: true });
   }
   fs.mkdirSync(buildDir);
   fs.mkdirSync(`${buildDir}/json`);

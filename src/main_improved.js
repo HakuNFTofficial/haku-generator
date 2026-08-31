@@ -58,7 +58,7 @@ let globalEditionCounterJSON = 1;
 // Necessary functions copied from the original main.js
 const buildSetup = () => {
   if (fs.existsSync(buildDir)) {
-    fs.rmdirSync(buildDir, { recursive: true });
+    fs.rmSync(buildDir, { recursive: true, force: true });
   }
   fs.mkdirSync(buildDir);
   fs.mkdirSync(`${buildDir}/json`);
