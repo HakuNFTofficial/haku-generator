@@ -17,7 +17,12 @@ const makeTempDir = () =>
 
 function makeFixtureDirectory(t) {
   const imagesDir = makeTempDir();
-  t.after(() => fs.rmSync(imagesDir, { recursive: true, force: true }));
+  t.after(() => {
+    fs.rmSync(imagesDir, { recursive: true, force: true });
+    fs.rmSync(`${path.resolve(imagesDir)}.optimize-checkpoint.json`, {
+      force: true,
+    });
+  });
 
   const canvas = createCanvas(2, 2);
   const context = canvas.getContext("2d");
@@ -181,16 +186,32 @@ test("successful optimization uses strict lossless options and reports savings",
   });
 
   assert.deepEqual(calls[0].args, ["--version"]);
-  assert.deepEqual(calls[1].args.slice(0, 4), [
+  const optimizeCalls = calls.filter(({ args }) => args[0] === "-o");
+  assert.equal(optimizeCalls.length, 2);
+  assert.deepEqual(optimizeCalls[0].args.slice(0, 7), [
     "-o",
     "4",
     "--strip",
     "safe",
+    "--threads",
+    "2",
+    "--sequential",
   ]);
-  assert.equal(calls[1].args.includes("--alpha"), false);
-  assert.deepEqual(calls[1].args.slice(4), [
+  assert.equal(optimizeCalls[0].args.includes("--alpha"), false);
+  assert.deepEqual(optimizeCalls.flatMap(({ args }) => args.slice(7)), [
     path.join(imagesDir, "1.png"),
     path.join(imagesDir, "2.PNG"),
+  ]);
+  const validationCalls = calls.filter(({ args }) => args[0] === "-q");
+  assert.equal(validationCalls.length, 1);
+  assert.deepEqual(validationCalls[0].args.slice(0, 7), [
+    "-q",
+    "--dry-run",
+    "--nx",
+    "--nz",
+    "--threads",
+    "1",
+    "--sequential",
   ]);
   assert.deepEqual(await snapshotImages(imagesDir), beforeSnapshot);
   assert.deepEqual(summary, {
@@ -202,6 +223,8 @@ test("successful optimization uses strict lossless options and reports savings",
     afterBytes: beforeBytes,
     savedBytes: 0,
     savedPercent: 0,
+    optimizedImageCount: 2,
+    resumedImageCount: 0,
     durationMs: 25,
   });
 });
@@ -230,15 +253,18 @@ test("a missing output file fails with OUTPUT_COUNT_MISMATCH", async (t) => {
 
 test("an unreadable output fails with OUTPUT_INVALID_PNG", async (t) => {
   const imagesDir = makeFixtureDirectory(t);
-  let callCount = 0;
-  const spawnSyncFn = () => {
-    callCount += 1;
-    if (callCount === 2) {
-      fs.writeFileSync(path.join(imagesDir, "1.png"), "not a png");
+  const spawnSyncFn = (_binary, args) => {
+    if (args[0] === "--version") {
+      return { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" };
     }
-    return callCount === 1
-      ? { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" }
-      : { status: 0, stdout: "", stderr: "" };
+    if (args[0] === "-o" && args.at(-1).endsWith("1.png")) {
+      fs.writeFileSync(path.join(imagesDir, "1.png"), "not a png");
+      return { status: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "-q" && args.some((arg) => arg.endsWith("1.png"))) {
+      return { status: 7, stdout: "", stderr: "invalid PNG" };
+    }
+    return { status: 0, stdout: "", stderr: "" };
   };
 
   await assert.rejects(
@@ -281,18 +307,154 @@ test("large collections use memory-conscious OxiPNG batches", async (t) => {
   await runOptimization({
     imagesDir,
     spawnSyncFn,
-    loadImageFn: async () => ({ width: 1, height: 1 }),
   });
 
-  const optimizeCalls = calls.slice(1);
-  assert.equal(optimizeCalls.length, 3);
+  const optimizeCalls = calls.filter((args) => args[0] === "-o");
+  assert.equal(optimizeCalls.length, 17);
   assert.equal(
-    optimizeCalls.every((args) => args.slice(4).length <= 8),
+    optimizeCalls.every(
+      (args) =>
+        args.slice(0, 7).join(" ") ===
+          "-o 4 --strip safe --threads 2 --sequential" &&
+        args.slice(7).length === 1
+    ),
     true
   );
   assert.equal(
-    optimizeCalls.reduce((count, args) => count + args.slice(4).length, 0),
+    optimizeCalls.reduce((count, args) => count + args.slice(7).length, 0),
     17
+  );
+});
+
+test("an interrupted run resumes after the last completed checkpoint", async (t) => {
+  const imagesDir = makeFixtureDirectory(t);
+  const checkpointPath = `${imagesDir}.checkpoint.json`;
+  t.after(() => fs.rmSync(checkpointPath, { force: true }));
+
+  let optimizeCallCount = 0;
+  const interruptedSpawn = (_binary, args) => {
+    if (args[0] === "--version") {
+      return { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" };
+    }
+    if (args[0] === "-o") {
+      optimizeCallCount += 1;
+      return optimizeCallCount === 1
+        ? { status: 0, stdout: "", stderr: "" }
+        : { status: 9, stdout: "", stderr: "interrupted" };
+    }
+    return { status: 0, stdout: "", stderr: "" };
+  };
+
+  await assert.rejects(
+    runOptimization({ imagesDir, checkpointPath, spawnSyncFn: interruptedSpawn }),
+    (error) => error.code === "OXIPNG_FAILED"
+  );
+
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, "utf8"));
+  assert.deepEqual(Object.keys(checkpoint.completedFiles), ["1.png"]);
+
+  const resumedCalls = [];
+  const resumedSpawn = (_binary, args) => {
+    resumedCalls.push(args);
+    return args[0] === "--version"
+      ? { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" }
+      : { status: 0, stdout: "", stderr: "" };
+  };
+
+  const summary = await runOptimization({
+    imagesDir,
+    checkpointPath,
+    spawnSyncFn: resumedSpawn,
+  });
+
+  const resumedOptimizeCalls = resumedCalls.filter((args) => args[0] === "-o");
+  assert.deepEqual(
+    resumedOptimizeCalls.flatMap((args) => args.slice(7)),
+    [path.join(imagesDir, "2.PNG")]
+  );
+  assert.equal(summary.optimizedImageCount, 1);
+  assert.equal(summary.resumedImageCount, 1);
+  assert.equal(fs.existsSync(checkpointPath), false);
+});
+
+test("a checkpointed file that changed fails explicitly", async (t) => {
+  const imagesDir = makeFixtureDirectory(t);
+  const checkpointPath = `${imagesDir}.checkpoint.json`;
+  t.after(() => fs.rmSync(checkpointPath, { force: true }));
+
+  let optimizeCallCount = 0;
+  const interruptedSpawn = (_binary, args) => {
+    if (args[0] === "--version") {
+      return { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" };
+    }
+    if (args[0] === "-o") {
+      optimizeCallCount += 1;
+      return optimizeCallCount === 1
+        ? { status: 0, stdout: "", stderr: "" }
+        : { status: 9, stdout: "", stderr: "interrupted" };
+    }
+    return { status: 0, stdout: "", stderr: "" };
+  };
+
+  await assert.rejects(
+    runOptimization({ imagesDir, checkpointPath, spawnSyncFn: interruptedSpawn }),
+    (error) => error.code === "OXIPNG_FAILED"
+  );
+  fs.appendFileSync(path.join(imagesDir, "1.png"), "changed");
+
+  await assert.rejects(
+    runOptimization({
+      imagesDir,
+      checkpointPath,
+      spawnSyncFn: (_binary, args) =>
+        args[0] === "--version"
+          ? { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" }
+          : { status: 0, stdout: "", stderr: "" },
+    }),
+    (error) =>
+      error.code === "CHECKPOINT_FILE_CHANGED" &&
+      error.details.failedFiles.includes("1.png")
+  );
+});
+
+test("a checkpoint with missing progress data fails explicitly", async (t) => {
+  const imagesDir = makeFixtureDirectory(t);
+  const checkpointPath = `${imagesDir}.checkpoint.json`;
+  t.after(() => fs.rmSync(checkpointPath, { force: true }));
+
+  let optimizeCallCount = 0;
+  const interruptedSpawn = (_binary, args) => {
+    if (args[0] === "--version") {
+      return { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" };
+    }
+    if (args[0] === "-o") {
+      optimizeCallCount += 1;
+      return optimizeCallCount === 1
+        ? { status: 0, stdout: "", stderr: "" }
+        : { status: 9, stdout: "", stderr: "interrupted" };
+    }
+    return { status: 0, stdout: "", stderr: "" };
+  };
+
+  await assert.rejects(
+    runOptimization({ imagesDir, checkpointPath, spawnSyncFn: interruptedSpawn }),
+    (error) => error.code === "OXIPNG_FAILED"
+  );
+
+  const checkpoint = JSON.parse(fs.readFileSync(checkpointPath, "utf8"));
+  delete checkpoint.completedFiles;
+  fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint));
+
+  await assert.rejects(
+    runOptimization({
+      imagesDir,
+      checkpointPath,
+      spawnSyncFn: (_binary, args) =>
+        args[0] === "--version"
+          ? { status: 0, stdout: "oxipng 9.1.5\n", stderr: "" }
+          : { status: 0, stdout: "", stderr: "" },
+    }),
+    (error) => error.code === "CHECKPOINT_INVALID"
   );
 });
 

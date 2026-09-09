@@ -3,9 +3,32 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { loadImage } = require("canvas");
 
-const BATCH_SIZE = 8;
+const CHECKPOINT_VERSION = 1;
+const OPTIMIZE_BATCH_SIZE = 1;
+const OPTIMIZE_THREADS = 2;
+const VALIDATION_BATCH_SIZE = 64;
+const PROGRESS_INTERVAL = 25;
+
+const OPTIMIZE_ARGS = [
+  "-o",
+  "4",
+  "--strip",
+  "safe",
+  "--threads",
+  String(OPTIMIZE_THREADS),
+  "--sequential",
+];
+
+const VALIDATION_ARGS = [
+  "-q",
+  "--dry-run",
+  "--nx",
+  "--nz",
+  "--threads",
+  "1",
+  "--sequential",
+];
 
 class OptimizationError extends Error {
   constructor(code, message, details = {}) {
@@ -93,31 +116,186 @@ function chunk(items, size) {
   return chunks;
 }
 
-async function validatePngFiles(
-  files,
-  imagesDir,
-  loadImageFn = loadImage
-) {
-  const invalidFiles = [];
+function defaultCheckpointPath(imagesDir) {
+  return `${path.resolve(imagesDir)}.optimize-checkpoint.json`;
+}
 
-  for (const file of files) {
-    try {
-      const image = await loadImageFn(file);
-      if (!image.width || !image.height) {
-        invalidFiles.push(path.basename(file));
-      }
-    } catch {
-      invalidFiles.push(path.basename(file));
-    }
-  }
+function fileFingerprint(file) {
+  const stat = fs.statSync(file);
+  return {
+    size: stat.size,
+    mtimeMs: stat.mtimeMs,
+  };
+}
 
-  if (invalidFiles.length > 0) {
+function writeCheckpoint(checkpointPath, checkpoint) {
+  const temporaryPath = `${checkpointPath}.tmp-${process.pid}`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(checkpoint)}\n`, "utf8");
+  fs.renameSync(temporaryPath, checkpointPath);
+}
+
+function readCheckpoint(checkpointPath, imagesDir) {
+  try {
+    return JSON.parse(fs.readFileSync(checkpointPath, "utf8"));
+  } catch (error) {
     throw new OptimizationError(
-      "OUTPUT_INVALID_PNG",
-      "One or more PNG outputs are unreadable",
+      "CHECKPOINT_INVALID",
+      "Optimization checkpoint is unreadable or invalid",
       {
         imagesDir,
-        failedFiles: invalidFiles,
+        checkpointPath,
+        reason: error?.message || String(error),
+      }
+    );
+  }
+}
+
+function assertCheckpointCompatible({
+  checkpoint,
+  checkpointPath,
+  imagesDir,
+  originalNames,
+  oxipngBin,
+  oxipngVersion,
+}) {
+  const missingFields = [];
+  if (
+    !checkpoint.completedFiles ||
+    typeof checkpoint.completedFiles !== "object" ||
+    Array.isArray(checkpoint.completedFiles)
+  ) {
+    missingFields.push("completedFiles");
+  }
+  if (!Number.isSafeInteger(checkpoint.beforeBytes) || checkpoint.beforeBytes < 0) {
+    missingFields.push("beforeBytes");
+  }
+  if (missingFields.length > 0) {
+    throw new OptimizationError(
+      "CHECKPOINT_INVALID",
+      "Optimization checkpoint is missing required progress data",
+      {
+        imagesDir,
+        checkpointPath,
+        missingFields,
+      }
+    );
+  }
+
+  const expected = {
+    version: CHECKPOINT_VERSION,
+    imagesDir: path.resolve(imagesDir),
+    oxipngBin,
+    oxipngVersion,
+    optimizeArgs: OPTIMIZE_ARGS,
+    files: originalNames,
+  };
+  const mismatchedFields = Object.entries(expected)
+    .filter(([field, value]) =>
+      JSON.stringify(checkpoint[field]) !== JSON.stringify(value)
+    )
+    .map(([field]) => field);
+
+  if (mismatchedFields.length > 0) {
+    throw new OptimizationError(
+      "CHECKPOINT_MISMATCH",
+      "Optimization checkpoint does not match the current collection or settings",
+      {
+        imagesDir,
+        checkpointPath,
+        mismatchedFields,
+      }
+    );
+  }
+
+  const failedFiles = Object.entries(checkpoint.completedFiles || {})
+    .filter(([name, fingerprint]) => {
+      const file = path.join(imagesDir, name);
+      if (!fs.existsSync(file)) {
+        return true;
+      }
+      return JSON.stringify(fileFingerprint(file)) !== JSON.stringify(fingerprint);
+    })
+    .map(([name]) => name);
+
+  if (failedFiles.length > 0) {
+    throw new OptimizationError(
+      "CHECKPOINT_FILE_CHANGED",
+      "A completed PNG changed after it was checkpointed",
+      {
+        imagesDir,
+        checkpointPath,
+        failedFiles,
+      }
+    );
+  }
+}
+
+function childFailed(result) {
+  return Boolean(result.error) || result.status !== 0;
+}
+
+function runValidationProcess(spawnSyncFn, oxipngBin, files) {
+  return spawnSyncFn(
+    oxipngBin,
+    [...VALIDATION_ARGS, ...files],
+    { encoding: "utf8" }
+  );
+}
+
+async function validatePngFiles({
+  files,
+  imagesDir,
+  oxipngBin,
+  spawnSyncFn,
+}) {
+  for (const batch of chunk(files, VALIDATION_BATCH_SIZE)) {
+    const result = runValidationProcess(spawnSyncFn, oxipngBin, batch);
+    if (!childFailed(result)) {
+      continue;
+    }
+
+    if (result.error?.code === "ENOENT") {
+      throw new OptimizationError(
+        "OXIPNG_NOT_FOUND",
+        "OxiPNG is not installed or is not on PATH",
+        {
+          imagesDir,
+          missingFields: ["oxipng executable"],
+        }
+      );
+    }
+
+    const failedFiles = [];
+    for (const file of batch) {
+      const singleResult = runValidationProcess(
+        spawnSyncFn,
+        oxipngBin,
+        [file]
+      );
+      if (childFailed(singleResult)) {
+        failedFiles.push(path.basename(file));
+      }
+    }
+
+    if (failedFiles.length > 0) {
+      throw new OptimizationError(
+        "OUTPUT_INVALID_PNG",
+        "One or more PNG outputs are unreadable",
+        {
+          imagesDir,
+          failedFiles,
+        }
+      );
+    }
+
+    throw new OptimizationError(
+      "OXIPNG_FAILED",
+      "OxiPNG validation failed",
+      {
+        imagesDir,
+        phase: "validation",
+        exitCode: result.status ?? null,
+        stderr: String(result.stderr || result.error?.message || "").trim(),
       }
     );
   }
@@ -127,12 +305,12 @@ async function runOptimization({
   imagesDir,
   oxipngBin = "oxipng",
   spawnSyncFn = spawnSync,
-  loadImageFn = loadImage,
   nowFn = Date.now,
+  checkpointPath = defaultCheckpointPath(imagesDir),
+  onProgress = () => {},
 }) {
   const files = listPngFiles(imagesDir);
   const originalNames = files.map((file) => path.basename(file));
-  const beforeBytes = sumBytes(files);
   const startedAt = nowFn();
 
   const versionResult = runChild(
@@ -141,14 +319,77 @@ async function runOptimization({
     ["--version"],
     imagesDir
   );
+  const oxipngVersion = String(versionResult.stdout || "").trim();
 
-  for (const batch of chunk(files, BATCH_SIZE)) {
+  let checkpoint;
+  if (fs.existsSync(checkpointPath)) {
+    checkpoint = readCheckpoint(checkpointPath, imagesDir);
+    assertCheckpointCompatible({
+      checkpoint,
+      checkpointPath,
+      imagesDir,
+      originalNames,
+      oxipngBin,
+      oxipngVersion,
+    });
+  } else {
+    checkpoint = {
+      version: CHECKPOINT_VERSION,
+      imagesDir: path.resolve(imagesDir),
+      oxipngBin,
+      oxipngVersion,
+      optimizeArgs: OPTIMIZE_ARGS,
+      files: originalNames,
+      beforeBytes: sumBytes(files),
+      completedFiles: {},
+    };
+    writeCheckpoint(checkpointPath, checkpoint);
+  }
+
+  const resumedImageCount = Object.keys(checkpoint.completedFiles).length;
+  const pendingFiles = files.filter(
+    (file) => !checkpoint.completedFiles[path.basename(file)]
+  );
+  let optimizedImageCount = 0;
+
+  for (const batch of chunk(pendingFiles, OPTIMIZE_BATCH_SIZE)) {
     runChild(
       spawnSyncFn,
       oxipngBin,
-      ["-o", "4", "--strip", "safe", ...batch],
+      [...OPTIMIZE_ARGS, ...batch],
       imagesDir
     );
+
+    for (const file of batch) {
+      if (!fs.existsSync(file)) {
+        throw new OptimizationError(
+          "OUTPUT_COUNT_MISMATCH",
+          "PNG output names or count changed during optimization",
+          {
+            imagesDir,
+            expectedCount: files.length,
+            actualCount: files.length - 1,
+            failedFiles: [path.basename(file)],
+          }
+        );
+      }
+      checkpoint.completedFiles[path.basename(file)] = fileFingerprint(file);
+      optimizedImageCount += 1;
+    }
+    writeCheckpoint(checkpointPath, checkpoint);
+
+    const completedCount = resumedImageCount + optimizedImageCount;
+    if (
+      completedCount === files.length ||
+      completedCount % PROGRESS_INTERVAL === 0
+    ) {
+      onProgress({
+        status: "running",
+        completedCount,
+        imageCount: files.length,
+        checkpointPath,
+      });
+    }
   }
 
   const outputFiles = listPngFiles(imagesDir);
@@ -173,26 +414,37 @@ async function runOptimization({
     );
   }
 
-  await validatePngFiles(outputFiles, imagesDir, loadImageFn);
+  await validatePngFiles({
+    files: outputFiles,
+    imagesDir,
+    oxipngBin,
+    spawnSyncFn,
+  });
 
   const afterBytes = sumBytes(outputFiles);
+  const beforeBytes = checkpoint.beforeBytes;
   const savedBytes = beforeBytes - afterBytes;
   const savedPercent =
     beforeBytes === 0
       ? 0
       : Number(((savedBytes / beforeBytes) * 100).toFixed(2));
 
-  return {
+  const summary = {
     status: "ok",
     imagesDir,
-    oxipngVersion: String(versionResult.stdout || "").trim(),
+    oxipngVersion,
     imageCount: outputFiles.length,
     beforeBytes,
     afterBytes,
     savedBytes,
     savedPercent,
+    optimizedImageCount,
+    resumedImageCount,
     durationMs: nowFn() - startedAt,
   };
+
+  fs.rmSync(checkpointPath, { force: true });
+  return summary;
 }
 
 async function runCli({
@@ -202,7 +454,12 @@ async function runCli({
   stderr = process.stderr,
 } = {}) {
   try {
-    const summary = await runOptimizationFn({ imagesDir });
+    const summary = await runOptimizationFn({
+      imagesDir,
+      onProgress: (progress) => {
+        stderr.write(`${JSON.stringify(progress)}\n`);
+      },
+    });
     stdout.write(`${JSON.stringify(summary)}\n`);
     return 0;
   } catch (error) {

@@ -158,3 +158,14 @@ The project documentation will state:
 - Automatically uploading optimized files to IPFS.
 - Updating JSON image URIs or contract metadata.
 - Optimizing layer source assets.
+
+## Reliability Addendum — 2026-09-09
+
+The 13,000-image, 3,000×3,000 production run was terminated by the operating system after OxiPNG had processed the collection. The optimizer must therefore bound concurrency and persist resumable progress rather than relying only on safe full reruns.
+
+- Process one PNG per OxiPNG child process with `--threads 2 --sequential`.
+- Atomically persist a checkpoint after every successful PNG.
+- Resume only checkpointed files whose size and modification time still match; fail explicitly if completed input changed.
+- Keep the checkpoint outside `build/images` so it cannot enter the images IPFS directory.
+- Validate final PNGs through bounded, read-only OxiPNG subprocesses rather than retaining decoded 3,000×3,000 images in the Node.js process.
+- Remove the checkpoint only after final count, name, and PNG-integrity validation succeeds.

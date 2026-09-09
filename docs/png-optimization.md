@@ -40,9 +40,31 @@ npm run generate:optimized
 `npm run optimize` 会：
 
 1. 只处理项目根目录下 `build/images` 中的 PNG 文件；
-2. 使用 `oxipng -o 4 --strip safe`，并按最多 8 张一批处理以限制大尺寸图片的峰值内存；
-3. 检查优化前后的文件名、数量和 PNG 可读性；
-4. 输出一行 JSON，包含图片数、优化前后字节数、节省比例、耗时和 OxiPNG 版本。
+2. 使用 `oxipng -o 4 --strip safe --threads 2 --sequential`；每个 OxiPNG 子进程只处理一张图片，以限制 3,000×3,000 图片的峰值内存；
+3. 每成功处理一张图片，原子更新 `build/images.optimize-checkpoint.json`；
+4. 每完成 25 张向终端输出一条结构化进度记录；
+5. 检查优化前后的文件名、数量，并使用低内存、只读模式验证 PNG 完整性；
+6. 输出一行 JSON，包含图片数、优化前后字节数、节省比例、当次处理数、断点恢复数、耗时和 OxiPNG 版本。
+
+## 断点续跑与低并发
+
+`npm run optimize` 默认就是低并发、支持断点续跑的安全模式，不需要增加额外参数。checkpoint 位于图片目录之外，因此不会被误传到 Images folder CID。
+
+如果终端关闭、电脑重启或进程被系统终止，直接重新运行：
+
+```bash
+time caffeinate -i npm run optimize
+```
+
+脚本会核对 OxiPNG 版本、参数、图片列表以及已完成图片的大小和修改时间。核对通过后，只处理 checkpoint 中尚未完成的图片。如果进程在图片写入后、checkpoint 落盘前被杀，最多只会安全地重做这一张。
+
+全部图片优化并验证成功后，checkpoint 会自动删除。不要在运行中手工编辑图片或 checkpoint。
+
+如果你确实重新生成了图片、并希望放弃旧进度，请先确认这是新一轮集合，然后删除旧 checkpoint：
+
+```bash
+rm build/images.optimize-checkpoint.json
+```
 
 Canvas 生成 PNG 时本来就启用了无损压缩，因此第二次优化的收益可能只有几个百分点。最终效果取决于画面的颜色数量、纹理和噪点，不应只根据 1,000×1,000 或 3,000×3,000 的像素数估算。
 
@@ -86,3 +108,11 @@ Canvas 生成 PNG 时本来就启用了无损压缩，因此第二次优化的�
 - `OUTPUT_INVALID_PNG`：某个输出无法解码为 PNG。
 
 OxiPNG 原地处理文件。中途失败后可以修复报错并重新运行 `npm run optimize`；已经优化完成的文件仍然是有效输入。
+
+新增的 checkpoint 错误码：
+
+- `CHECKPOINT_INVALID`：checkpoint JSON 损坏或不可读；
+- `CHECKPOINT_MISMATCH`：图片列表、目录、OxiPNG 版本或优化参数与 checkpoint 不一致；
+- `CHECKPOINT_FILE_CHANGED`：某张已标记完成的图片后来发生了变化。
+
+这些情况不会自动猜测或丢弃进度。确认原因后，再决定是恢复原文件还是显式删除 checkpoint 开始新一轮优化。
